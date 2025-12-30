@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  nekobot:
+    image: nekobotteam/nekobot:latest
+    container_name: nekobot
+    ports:
+      - "6285:6285"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6285/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**多平台智能聊天机器人框架**
+**多平台智能聊天机器人框架** (目前项目正在处于初始阶段，因此版本号在发布正式版本之前一直为 1.0.0，有问题请及时反馈至Issue)
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NekoBotTeam/NekoBot)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://www.python.org/)
@@ -131,7 +131,7 @@ NekoBot/
 
 ## CLI 命令
 
-当前版本暂未提供完整的 CLI 工具，请通过 Web 仪表盘进行管理。
+我们为 `NekoBot` 提供了一个cli工具，用于重置 `WebUI` 的默认账户密码。
 
 ---
 
@@ -164,10 +164,24 @@ NekoBot/
 
 ---
 
-## 支持的 LLM
+## 支持的 LLM 提供商
 
-- **OpenAI** (GPT-3.5, GPT-4, GPT-4o 等)
-- **Google** (Gemini 系列)
+目前支持的 LLM 提供商：
+
+- **OpenAI** (GPT-4, GPT-3.5 等)
+- **Anthropic** (Claude)
+- **Google** (Gemini)
+- **智谱 AI** (GLM-4, GLM-3 等)
+- **其他兼容 OpenAI API 的服务商**
+
+后续准备支持接入的LLM提供商：
+
+- **OpenAI兼容**
+- **Deepseek**
+- **Moonshot AI**
+- **Ollama (本地部署)**
+- **LM Studio (本地部署)**
+- **其他自定义Base-Url地址的LLM服务商**
 
 ---
 
@@ -266,14 +280,16 @@ python main.py reset-password
 
 ## 致谢
 
-- 参考项目：[AstrBot](https://github.com/AstrBotDevs/AstrBot)
+- 参考项目：
+    -[AstrBot](https://github.com/AstrBotDevs/AstrBot)
+- [NapNeko/NapCatQQ](https://github.com/NapNeko/NapCatQQ) - 伟大的猫猫框架
 - 所有贡献者
 
 ---
 
 ## 联系方式
 
-- GitHub Issues: [提交问题](https://github.com/NekoBotTeam/NekoBot/issues)
+- GitHub Issues: [提交问题Issue](https://github.com/NekoBotTeam/NekoBot/issues)
 
 ---
 

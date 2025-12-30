@@ -30,10 +30,23 @@ packages = ["."]
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-exclude = [".venv", "venv", "env", ".git", "__pycache__", "build", "dist"]
+exclude = [
+    ".venv",
+    "venv",
+    "env",
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+]
 
 [tool.ruff.lint]
-ignore = ["F403", "F405", "E501", "ASYNC230"]
+ignore = ["F403", "F405", "E501", "E402", "ASYNC230"]
 select = ["F", "E", "W", "ASYNC", "C4", "Q"]
 
 [dependency-groups]
