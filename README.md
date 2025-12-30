@@ -2,7 +2,9 @@
 
 <div align="center">
 
-**多平台智能聊天机器人框架** (目前项目正在处于初始阶段，因此版本号在发布正式版本之前一直为 1.0.0，有问题请及时反馈至Issue)
+**多平台智能聊天机器人框架** 
+
+(目前项目正在处于初始阶段，因此版本号在发布正式版本之前一直为 1.0.0，有问题请及时反馈至Issue)
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NekoBotTeam/NekoBot)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://www.python.org/)
@@ -281,8 +283,9 @@ python main.py reset-password
 ## 致谢
 
 - 参考项目：
-    -[AstrBot](https://github.com/AstrBotDevs/AstrBot)
-- [NapNeko/NapCatQQ](https://github.com/NapNeko/NapCatQQ) - 伟大的猫猫框架
+
+    - [AstrBot](https://github.com/AstrBotDevs/AstrBot)
+    - [NapNeko/NapCatQQ](https://github.com/NapNeko/NapCatQQ) - 伟大的猫猫框架
 - 所有贡献者
 
 ---
