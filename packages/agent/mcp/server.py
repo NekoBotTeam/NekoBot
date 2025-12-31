@@ -3,14 +3,13 @@
 提供简化的MCP协议服务器基础实现
 """
 
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Callable
 from loguru import logger
-import asyncio
 
 
 class MCPServer:
     """MCP服务器
-    
+
     用于处理MCP协议的请求和响应
     """
 
@@ -20,7 +19,7 @@ class MCPServer:
         version: str = "2024-11-05",
     ):
         """初始化MCP服务器
-        
+
         Args:
             name: 服务器名称
             version: 协议版本
@@ -44,7 +43,7 @@ class MCPServer:
 
     def register_tool(self, tool_name: str, handler: Callable):
         """注册工具处理器
-        
+
         Args:
             tool_name: 工具名称
             handler: 处理函数
@@ -54,7 +53,7 @@ class MCPServer:
 
     def set_tool_prompt(self, tool_name: str, prompt: Dict[str, Any]):
         """设置工具提示词
-        
+
         Args:
             tool_name: 工具名称
             prompt: 提示词配置
@@ -64,7 +63,7 @@ class MCPServer:
 
     def register_resource(self, resource_uri: str, data: Any):
         """注册资源处理器
-        
+
         Args:
             resource_uri: 资源URI
             data: 资源数据
@@ -74,11 +73,11 @@ class MCPServer:
 
     async def handle_tool_call(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
         """处理工具调用请求
-        
+
         Args:
             tool_name: 工具名称
             arguments: 调用参数
-            
+
         Returns:
             工具执行结果
         """
@@ -91,13 +90,13 @@ class MCPServer:
                     "isError": True,
                 },
             }
-        
+
         handler = self._tools[tool_name]
-        
+
         try:
             # 执行工具
             result = await handler(arguments)
-            
+
             logger.info(f"工具 {tool_name} 执行成功")
             return {
                 "toolCallId": tool_name,
@@ -118,27 +117,27 @@ class MCPServer:
 
     async def list_tools(self):
         """列出可用工具
-        
+
         Returns:
             工具列表
         """
         if not self._running:
             logger.warning("MCP服务器未运行")
             return []
-        
+
         tools = []
         for tool_name, handler in self._tools.items():
             tools.append({
                 "name": tool_name,
                 "description": handler.__doc__ if hasattr(handler, "__doc__") else tool_name,
             })
-        
+
         logger.info(f"返回 {len(tools)} 个工具")
         return tools
 
     def get_server_info(self) -> Dict[str, Any]:
         """获取服务器信息
-        
+
         Returns:
             服务器信息字典
         """
@@ -155,7 +154,7 @@ class MCPServer:
 
     def is_running(self) -> bool:
         """检查服务器是否正在运行
-        
+
         Returns:
             是否正在运行
         """

@@ -3,12 +3,10 @@
 测试新增的 LLM 提供商功能
 """
 
-import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from packages.llm import (
-    LLMProviderType,
     LLMResponse,
     TokenUsage,
 )
@@ -71,7 +69,7 @@ class TestClaudeProvider:
     async def test_get_models(self, provider):
         """测试获取模型列表"""
         # Mock the client
-        with patch.object(provider, '_client') as mock_client:
+        with patch.object(provider, "_client") as mock_client:
             mock_models = MagicMock()
             mock_models.data = [
                 MagicMock(id="claude-3-5-sonnet-20241022"),
@@ -258,7 +256,7 @@ class TestLLMResponse:
         """测试默认值"""
         response = LLMResponse(role="assistant")
         assert response.completion_text == ""
-        assert response.is_chunk == False
+        assert not response.is_chunk
         assert response.tools_call_args == []
         assert response.tools_call_name == []
 

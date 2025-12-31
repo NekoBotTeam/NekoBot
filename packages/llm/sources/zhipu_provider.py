@@ -6,7 +6,6 @@
 from collections.abc import AsyncGenerator
 from typing import Optional
 
-import zhipuai
 from zhipuai import ZhipuAI
 
 from loguru import logger
@@ -131,12 +130,12 @@ class ZhipuProvider(BaseLLMProvider):
 
             # 解析文本响应
             completion_text = ""
-            if hasattr(choice.message, 'content') and choice.message.content:
+            if hasattr(choice.message, "content") and choice.message.content:
                 completion_text = choice.message.content
 
             # 解析使用情况
             usage = None
-            if hasattr(response, 'usage') and response.usage:
+            if hasattr(response, "usage") and response.usage:
                 usage = TokenUsage(
                     input_other=response.usage.prompt_tokens,
                     output=response.usage.completion_tokens,
@@ -202,7 +201,7 @@ class ZhipuProvider(BaseLLMProvider):
                 choice = chunk.choices[0]
 
                 # 处理内容
-                if hasattr(choice.delta, 'content') and choice.delta.content:
+                if hasattr(choice.delta, "content") and choice.delta.content:
                     accumulated_text += choice.delta.content
                     yield LLMResponse(
                         role="assistant",
@@ -212,14 +211,14 @@ class ZhipuProvider(BaseLLMProvider):
                     )
 
                 # 处理使用情况
-                if hasattr(chunk, 'usage') and chunk.usage:
+                if hasattr(chunk, "usage") and chunk.usage:
                     usage = TokenUsage(
                         input_other=chunk.usage.prompt_tokens,
                         output=chunk.usage.completion_tokens,
                     )
 
                 # 检查是否完成
-                if hasattr(choice, 'finish_reason') and choice.finish_reason == "stop":
+                if hasattr(choice, "finish_reason") and choice.finish_reason == "stop":
                     break
 
             # 发送最终结果

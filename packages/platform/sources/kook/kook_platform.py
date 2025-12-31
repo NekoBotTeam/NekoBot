@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import json
 from typing import Any, Optional
 
 import aiohttp

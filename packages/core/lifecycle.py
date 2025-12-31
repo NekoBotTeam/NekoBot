@@ -11,17 +11,17 @@ from loguru import logger
 from .config import load_config
 from .event_bus import EventBus, event_bus
 from .plugin_manager import PluginManager
-from .platform.manager import PlatformManager
+from ..platform import PlatformManager
 from .pipeline import PipelineScheduler, PipelineContext
 from .server import get_full_version, NEKOBOT_VERSION
 
 
 class NekoBotLifecycle:
     """NekoBot 核心生命周期管理类
-    
+
     负责管理 NekoBot 的启动、停止、重启等操作，
     以及初始化各个组件（PlatformManager、PluginManager、PipelineScheduler 等）
-    
+
     工作流程:
     1. 初始化所有组件
     2. 启动事件总线
@@ -39,7 +39,7 @@ class NekoBotLifecycle:
         event_bus_instance: Optional[EventBus] = None,
     ):
         """初始化生命周期管理器
-        
+
         Args:
             config: 配置字典
             plugin_manager: 插件管理器
@@ -48,33 +48,33 @@ class NekoBotLifecycle:
         """
         # 加载配置
         self.config = config or load_config()
-        
+
         # 初始化组件
         self.plugin_manager = plugin_manager
         self.platform_manager = platform_manager
         self.event_bus = event_bus_instance or event_bus
-        
+
         # 流水线调度器（稍后初始化）
         self.pipeline_scheduler: Optional[PipelineScheduler] = None
-        
+
         # 记录启动时间
         self.start_time: Optional[float] = None
-        
+
         # 当前运行任务
         self.running_tasks: List[asyncio.Task] = []
-        
+
         # 启动完成事件钩子
         self._startup_hooks: List[Callable] = []
-        
+
         # 关闭事件钩子
         self._shutdown_hooks: List[Callable] = []
-        
+
         # 是否正在运行
         self._running = False
 
     def add_startup_hook(self, hook: Callable):
         """添加启动完成事件钩子
-        
+
         Args:
             hook: 钩子函数
         """
@@ -83,7 +83,7 @@ class NekoBotLifecycle:
 
     def add_shutdown_hook(self, hook: Callable):
         """添加关闭事件钩子
-        
+
         Args:
             hook: 钩子函数
         """
@@ -92,7 +92,7 @@ class NekoBotLifecycle:
 
     async def initialize(self) -> None:
         """初始化 NekoBot 核心组件
-        
+
         负责初始化各个组件，包括：
         - 事件总线
         - 平台管理器
@@ -143,7 +143,7 @@ class NekoBotLifecycle:
 
         # 9. 记录启动时间
         self.start_time = time.time()
-        
+
         logger.info("NekoBot 核心组件初始化完成")
 
     async def _initialize_pipeline(self) -> None:
@@ -182,12 +182,12 @@ class NekoBotLifecycle:
             ],
             context=ctx,
         )
-        
+
         logger.info("Pipeline 调度器已初始化")
 
     async def start(self) -> None:
         """启动 NekoBot 服务器
-        
+
         开始事件处理循环并执行启动完成事件钩子
         """
         if self._running:
@@ -219,7 +219,7 @@ class NekoBotLifecycle:
             try:
                 # 从事件队列获取事件
                 event_data = await self.event_bus.event_queue.get()
-                
+
                 # 使用流水线调度器处理事件
                 if self.pipeline_scheduler:
                     await self.pipeline_scheduler.execute(event_data)
@@ -232,7 +232,7 @@ class NekoBotLifecycle:
 
     async def stop(self) -> None:
         """停止 NekoBot 服务器
-        
+
         停止所有正在运行的任务并终止各个管理器
         """
         if not self._running:
@@ -246,7 +246,7 @@ class NekoBotLifecycle:
         for task in self.running_tasks:
             if not task.done():
                 task.cancel()
-        
+
         # 等待任务结束
         for task in self.running_tasks:
             try:
@@ -288,7 +288,7 @@ class NekoBotLifecycle:
 
     async def restart(self) -> None:
         """重启 NekoBot 服务器
-        
+
         终止各个管理器并重新启动
         """
         logger.info("正在重启 NekoBot 服务器...")
@@ -334,7 +334,7 @@ class NekoBotLifecycle:
 
     def is_running(self) -> bool:
         """检查 NekoBot 是否正在运行
-        
+
         Returns:
             是否正在运行
         """
@@ -342,7 +342,7 @@ class NekoBotLifecycle:
 
     def get_uptime(self) -> float:
         """获取运行时间（秒）
-        
+
         Returns:
             运行时间（秒）
         """
@@ -357,7 +357,7 @@ lifecycle: Optional[NekoBotLifecycle] = None
 
 async def get_lifecycle() -> NekoBotLifecycle:
     """获取或创建全局生命周期实例
-    
+
     Returns:
         生命周期实例
     """

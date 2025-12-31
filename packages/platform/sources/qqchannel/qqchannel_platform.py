@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import json
 from typing import Any, Optional
 
 import aiohttp
@@ -219,7 +218,7 @@ class QQChannelPlatform(BasePlatform):
             data = event_data.get("d", {})
             author = data.get("author", {})
             channel_id = data.get("channel_id", "")
-            guild_id = data.get("guild_id", "")
+            data.get("guild_id", "")
 
             # 构建事件数据
             event_data_internal = {

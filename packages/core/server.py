@@ -13,6 +13,7 @@ from loguru import logger
 from .config import load_config
 from .plugin_manager import plugin_manager
 from ..platform import PlatformManager
+from . import __version__ as NEKOBOT_VERSION
 from .pipeline import (
     PipelineScheduler,
     PipelineContext,
@@ -34,9 +35,6 @@ platform_manager = PlatformManager()
 
 # 创建事件队列
 event_queue = asyncio.Queue()
-
-# 版本信息
-NEKOBOT_VERSION = "1.0.0"
 
 # 获取项目根目录
 PROJECT_ROOT = os.path.dirname(

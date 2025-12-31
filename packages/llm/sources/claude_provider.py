@@ -3,14 +3,11 @@
 参考 AstrBot 的 Claude 适配器实现
 """
 
-import base64
 import json
 from collections.abc import AsyncGenerator
-from typing import Any, Optional
+from typing import Optional
 
-import anthropic
 from anthropic import AsyncAnthropic
-from anthropic.types import Message
 from anthropic.types.usage import Usage
 
 from loguru import logger

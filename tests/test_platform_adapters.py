@@ -5,7 +5,6 @@
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from packages.platform import BasePlatform
 from packages.platform.base import PlatformStatus

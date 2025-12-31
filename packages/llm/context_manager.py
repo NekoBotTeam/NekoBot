@@ -58,7 +58,7 @@ class ContextConfig:
     """是否启用摘要压缩"""
 
 
-class ContextManager:
+class LLMContextManager:
     """上下文管理器
 
     管理会话历史和上下文压缩

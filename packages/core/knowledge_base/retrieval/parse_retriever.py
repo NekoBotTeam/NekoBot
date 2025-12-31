@@ -3,14 +3,13 @@
 基于BM25算法的文档检索实现
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from loguru import logger
-import re
 
 
 class BM25Retriever:
     """BM25稀疏检索器
-    
+
     使用BM25算法计算文档相似度
     """
 
@@ -35,31 +34,31 @@ class BM25Retriever:
         min_score: float = 0.0,
     ) -> List[Dict[str, Any]]:
         """检索相关文档
-        
+
         Args:
             documents: 文档列表（包含id, text, metadata等）
             query: 查询文本
             top_k: 返回前 K 个结果
             min_score: 最小分数阈值
-            
+
         Returns:
             检索结果列表
         """
         if not documents:
             logger.warning("文档列表为空，返回空结果")
             return []
-        
+
         results = []
         query_lower = query.lower()
-        
+
         for doc in documents:
             text = doc.get("text", "")
             doc_id = doc.get("id", "")
             metadata = doc.get("metadata", {})
-            
+
             # 简单的文本匹配检索（计算相似度）
             score = self._calculate_text_score(text, query_lower)
-            
+
             if score >= min_score:
                 results.append({
                     "document_id": doc_id,
@@ -67,49 +66,49 @@ class BM25Retriever:
                     "score": score,
                     "metadata": metadata,
                 })
-        
+
         # 按分数排序（降序）
         results.sort(key=lambda x: x["score"], reverse=True)
-        
+
         # 只返回前 top_k 个结果
         results = results[:top_k]
-        
+
         logger.info(f"BM25检索完成，查询: '{query}'，返回 {len(results)} 个结果")
         return results
 
     def _calculate_text_score(self, text: str, query: str) -> float:
         """计算文本相似度分数
-        
+
         Args:
             text: 文档文本
             query: 查询文本
-            
+
         Returns:
             相似度分数（0-1）
         """
         text_lower = text.lower()
         query_lower = query.lower()
-        
+
         # 完全匹配
         if text_lower == query_lower:
             return 1.0
-        
+
         # 计算查询词和文档文本的重叠
         query_words = set(query_lower.split())
         text_words = set(text_lower.split())
-        
+
         # 计算重叠词数
         overlap = len(query_words & text_words)
-        
+
         if len(query_words) == 0:
             return 0.0
-        
+
         # 简化的相似度计算：重叠率 * 0.7
         return (overlap / len(query_words)) * 0.7
 
     def add_stopword(self, word: str):
         """添加停止词
-        
+
         Args:
             word: 停止词
         """
@@ -119,7 +118,7 @@ class BM25Retriever:
 
     def remove_stopword(self, word: str):
         """移除停止词
-        
+
         Args:
             word: 停止词
         """
@@ -130,7 +129,7 @@ class BM25Retriever:
 
     def get_stopwords(self) -> set[str]:
         """获取停止词集合
-        
+
         Returns:
             停止词集合
         """

@@ -4,20 +4,24 @@
 """
 
 import asyncio
-import base64
 import json
 import re
 import time
 import uuid
 from typing import Any, Optional
 
-import lark_oapi as lark
-from lark_oapi.api.im.v1 import (
-    CreateMessageRequest,
-    CreateMessageRequestBody,
-    GetMessageResourceRequest,
-)
-from lark_oapi.api.im.v1.processor import P2ImMessageReceiveV1Processor
+try:
+    import lark_oapi as lark
+    from lark_oapi.api.im.v1 import (
+        CreateMessageRequest,
+        CreateMessageRequestBody,
+    )
+    LARK_AVAILABLE = True
+except ImportError:
+    LARK_AVAILABLE = False
+    lark = None
+    CreateMessageRequest = None
+    CreateMessageRequestBody = None
 
 from loguru import logger
 
@@ -33,27 +37,29 @@ except ImportError:
         pass
 
 
-@register_platform_adapter(
-    "lark",
-    "飞书机器人适配器 (基于官方 SDK)",
-    default_config_tmpl={
-        "type": "lark",
-        "enable": False,
-        "id": "lark",
-        "name": "飞书机器人",
-        "app_id": "",
-        "app_secret": "",
-        "domain": "https://open.feishu.cn",
-        "connection_mode": "socket",
-        "lark_bot_name": "NekoBot",
-        "verify_token": "",
-        "encrypt_key": "",
-    },
-    adapter_display_name="飞书",
-    support_streaming_message=False,
-)
-class LarkPlatform(BasePlatform):
-    """飞书平台适配器"""
+# 只有在 lark_oapi 可用时才注册平台
+if LARK_AVAILABLE:
+    @register_platform_adapter(
+        "lark",
+        "飞书机器人适配器 (基于官方 SDK)",
+        default_config_tmpl={
+            "type": "lark",
+            "enable": False,
+            "id": "lark",
+            "name": "飞书机器人",
+            "app_id": "",
+            "app_secret": "",
+            "domain": "https://open.feishu.cn",
+            "connection_mode": "socket",
+            "lark_bot_name": "NekoBot",
+            "verify_token": "",
+            "encrypt_key": "",
+        },
+        adapter_display_name="飞书",
+        support_streaming_message=False,
+    )
+    class LarkPlatform(BasePlatform):
+        """飞书平台适配器"""
 
     def __init__(
         self,
@@ -110,6 +116,8 @@ class LarkPlatform(BasePlatform):
         self.event_id_timestamps: dict[str, float] = {}
 
         self._shutdown_event = asyncio.Event()
+else:
+    logger.warning("飞书平台适配器未加载：缺少 lark_oapi 依赖，请使用 `pip install lark-oapi` 安装")
 
     def _clean_expired_events(self):
         """清理超过 30 分钟的事件记录"""
@@ -248,7 +256,7 @@ class LarkPlatform(BasePlatform):
             return
 
         # 检查是否重复事件
-        if hasattr(event, 'header') and event.header:
+        if hasattr(event, "header") and event.header:
             event_id = event.header.event_id
             if event_id and self._is_duplicate_event(event_id):
                 logger.debug(f"[Lark] 跳过重复事件: {event_id}")

@@ -11,7 +11,7 @@ from .base import BaseTool
 
 class HandoffTool(BaseTool):
     """Handoff工具
-    
+
     用于将对话权移交给另一个Agent或工具
     """
 
@@ -22,7 +22,7 @@ class HandoffTool(BaseTool):
         next_agent: Optional[str] = None,
     ):
         """初始化Handoff工具
-        
+
         Args:
             agent_name: 接管的Agent名称
             description: 工具描述
@@ -67,20 +67,20 @@ class HandoffTool(BaseTool):
         context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """执行Handoff切换
-        
+
         Args:
             parameters: 参数字典
             context: 执行上下文
-            
+
         Returns:
             包含切换信息的字典
         """
         agent_name = parameters.get("agent_name", "")
         description = parameters.get("description", self._description)
         next_agent = parameters.get("next_agent", self._next_agent)
-        
+
         logger.info(f"执行Handoff切换，从 {self._agent_name} 切换到 {next_agent}")
-        
+
         return {
             "tool_name": self._agent_name,
             "agent_name": agent_name,

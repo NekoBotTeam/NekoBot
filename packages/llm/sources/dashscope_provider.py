@@ -7,7 +7,6 @@ from collections.abc import AsyncGenerator
 from typing import Optional
 
 import dashscope
-from dashscope import Generation
 from dashscope.aigc.generation import AioGeneration
 
 from loguru import logger
@@ -141,12 +140,12 @@ class DashScopeProvider(BaseLLMProvider):
 
             # 解析文本响应
             completion_text = ""
-            if hasattr(choice.message, 'content') and choice.message.content:
+            if hasattr(choice.message, "content") and choice.message.content:
                 completion_text = choice.message.content
 
             # 解析使用情况
             usage = None
-            if hasattr(response, 'usage') and response.usage:
+            if hasattr(response, "usage") and response.usage:
                 usage = TokenUsage(
                     input_other=response.usage.input_tokens,
                     output=response.usage.output_tokens,
@@ -222,7 +221,7 @@ class DashScopeProvider(BaseLLMProvider):
                 choice = output.choices[0]
 
                 # 处理内容
-                if hasattr(choice.message, 'content') and choice.message.content:
+                if hasattr(choice.message, "content") and choice.message.content:
                     accumulated_text += choice.message.content
                     yield LLMResponse(
                         role="assistant",
@@ -232,7 +231,7 @@ class DashScopeProvider(BaseLLMProvider):
                     )
 
                 # 处理使用情况
-                if hasattr(response, 'usage') and response.usage:
+                if hasattr(response, "usage") and response.usage:
                     usage = TokenUsage(
                         input_other=response.usage.input_tokens,
                         output=response.usage.output_tokens,

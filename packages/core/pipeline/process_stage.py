@@ -115,7 +115,7 @@ class ProcessStage(Stage):
         elif llm_reply_mode == "command":
             # 命令模式：只有使用命令前缀时触发
             should_trigger_llm = is_command
-        
+
         logger.debug(f"LLM 回复模式: {llm_reply_mode}, 触发: {should_trigger_llm}, 是命令: {is_command}")
 
         # 处理消息
@@ -249,15 +249,15 @@ class ProcessStage(Stage):
             sender = event.get("sender", {}) if isinstance(event.get("sender"), dict) else {}
             nickname = sender.get("card") or sender.get("nickname") or str(user_id)
             user_disp = f"{nickname}({user_id})"
-            
+
             # 获取群组信息
             group_name = event.get("group_name")
             message_type = event.get("message_type", "")
             bot_id = event.get("self_id", "unknown")
-            
+
             # 初始化工具注册表并注册内置工具
             tool_registry = ToolRegistry()
-            
+
             # 工具：获取用户信息
             def get_user_info() -> str:
                 """获取当前用户信息"""
@@ -267,7 +267,7 @@ class ProcessStage(Stage):
 - 显示名称: {user_disp}
 - 消息类型: {'群聊' if message_type == 'group' else '私聊'}
 {f"- 所在群组: {group_name} ({group_id})" if message_type == 'group' else ""}"""
-            
+
             tool_registry.register_tool(ToolDefinition(
                 name="get_user_info",
                 category=ToolCategory.SYSTEM,
@@ -275,7 +275,7 @@ class ProcessStage(Stage):
                 function=get_user_info,
                 enabled=True
             ))
-            
+
             # 工具：获取群组信息
             def get_group_info() -> str:
                 """获取当前群组信息"""
@@ -286,7 +286,7 @@ class ProcessStage(Stage):
 - 群组名称: {group_name or '未知'}
 - 你的机器人ID: {bot_id}
 - 当前用户: {user_disp}"""
-            
+
             tool_registry.register_tool(ToolDefinition(
                 name="get_group_info",
                 category=ToolCategory.SYSTEM,
@@ -294,7 +294,7 @@ class ProcessStage(Stage):
                 function=get_group_info,
                 enabled=True
             ))
-            
+
             # 工具：列出可用工具
             def list_tools() -> str:
                 """列出所有可用的工具"""
@@ -304,7 +304,7 @@ class ProcessStage(Stage):
                     for tool in tools
                 ])
                 return f"""当前可用工具列表（共 {len(tools)} 个）:\n\n{tool_list}\n\n提示: 你可以在回答中告诉用户这些工具的用途和功能。"""
-            
+
             tool_registry.register_tool(ToolDefinition(
                 name="list_tools",
                 category=ToolCategory.SYSTEM,
@@ -312,7 +312,7 @@ class ProcessStage(Stage):
                 function=list_tools,
                 enabled=True
             ))
-            
+
             # 构建工具列表描述
             tools_desc = """=== 可用工具列表 ===
 
@@ -333,7 +333,7 @@ class ProcessStage(Stage):
 
 === 工具说明 ===
 这些工具可以帮助你更好地理解当前对话环境和用户需求。你可以在回答中主动提及这些工具，或根据用户需求调用相关工具获取信息。"""
-            
+
             # 构建用户信息系统提示词
             user_info_prompt = f"""你是 NekoBot，一个智能聊天机器人框架中的 AI 助手。
 
