@@ -75,57 +75,49 @@ class DynamicRegisterManager:
     
     def dynamic_register_llm_providers(self) -> Dict[str, Type]:
         """动态注册LLM提供商
-        
+
         Returns:
-            Dict[str, Type]: 注册的LLM提供商字典
+            Dict[str, Type]: 注册的LLM提供商字典（只包含类，不包含元数据）
         """
         logger.info("开始动态注册LLM提供商...")
-        
+
         # 加载配置
         llm_providers_config, _ = self.load_configs()
-        
+
         # 动态注册启用的LLM提供商
         registered_providers = {}
-        
+
         for provider_id, provider_config in llm_providers_config.items():
             if provider_config.get("enabled", False):
                 provider_type = provider_config.get("type", provider_id)
-                
+
                 try:
                     # 动态导入模块
                     module_name = self.llm_provider_module_map.get(provider_type)
                     if not module_name:
                         logger.warning(f"未找到LLM提供商 {provider_type} 的模块映射，跳过注册")
                         continue
-                    
+
                     logger.debug(f"动态导入LLM提供商模块: {module_name}")
                     module = importlib.import_module(module_name)
-                    
-                    # 直接从模块中获取提供商类
-                    if module_name in module.__dict__:
-                        registered_providers[provider_type] = module
-                        logger.info(f"成功注册LLM提供商: {provider_type}")
-                    else:
-                        # 遍历模块中的所有类，找到继承自BaseLLMProvider的类
-                        from .base import BaseLLMProvider
-                        found = False
-                        for name, cls in module.__dict__.items():
-                            if isinstance(cls, type) and issubclass(cls, BaseLLMProvider) and cls != BaseLLMProvider:
-                                registered_providers[provider_type] = cls
-                                logger.info(f"成功注册LLM提供商: {provider_type}，使用类: {name}")
-                                found = True
-                                break
-                        
-                        if not found:
-                            logger.warning(f"未找到LLM提供商类: {provider_type}")
+
+                    # 遍历模块中的所有类，找到继承自BaseLLMProvider的类
+                    from .base import BaseLLMProvider
+                    found = False
+                    for name, cls in module.__dict__.items():
+                        if isinstance(cls, type) and issubclass(cls, BaseLLMProvider) and cls != BaseLLMProvider:
+                            registered_providers[provider_type] = cls
+                            logger.info(f"成功注册LLM提供商: {provider_type}，使用类: {name}")
+                            found = True
+                            break
+
+                    if not found:
+                        logger.warning(f"未找到LLM提供商类: {provider_type}")
                 except Exception as e:
                     logger.error(f"动态注册LLM提供商 {provider_type} 失败: {e}")
-        
-        # 更新全局变量
-        from .register import llm_provider_cls_map
-        llm_provider_cls_map.clear()
-        llm_provider_cls_map.update(registered_providers)
-        
+
+        # 不要覆盖 llm_provider_cls_map，因为它存储的是 LLMProviderMetaData 对象
+        # 只返回已注册的 Provider 类
         logger.info(f"LLM提供商动态注册完成，共注册 {len(registered_providers)} 个提供商")
         self.llm_providers = registered_providers
         return registered_providers

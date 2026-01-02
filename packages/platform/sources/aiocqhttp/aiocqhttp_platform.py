@@ -20,6 +20,7 @@ from ...register import register_platform_adapter
         "name": "NekoBot",
         "ws_host": "0.0.0.0",
         "ws_port": 6299,
+        "access_token": "",
         "command_prefix": "/",
     },
     adapter_display_name="aiocqhttp",
@@ -37,6 +38,7 @@ class AiocqhttpPlatform(BasePlatform):
         super().__init__(platform_config, platform_settings, event_queue)
         self.ws_host = self.get_config("ws_host", "0.0.0.0")
         self.ws_port = self.get_config("ws_port", 6299)
+        self.access_token = self.get_config("access_token", "")
         self.command_prefix = self.get_config("command_prefix", "/")
         self.clients: list[web.WebSocketResponse] = []
         self.runner: Optional[web.AppRunner] = None
@@ -52,9 +54,11 @@ class AiocqhttpPlatform(BasePlatform):
         self.site = web.TCPSite(self.runner, self.ws_host, self.ws_port)
         await self.site.start()
 
-        logger.info(
-            f"[{self.display_name}] aiocqhttp 平台已启动: ws://{self.ws_host}:{self.ws_port}/ws"
-        )
+        # 构建连接URL
+        ws_url = f"ws://{self.ws_host}:{self.ws_port}/ws"
+        if self.access_token:
+            ws_url += f"?access_token={self.access_token}"
+        logger.info(f"[{self.display_name}] aiocqhttp 平台已启动: {ws_url}")
 
     async def stop(self) -> None:
         """停止 aiocqhttp 平台适配器"""
@@ -111,6 +115,15 @@ class AiocqhttpPlatform(BasePlatform):
         self, request: web.Request
     ) -> web.WebSocketResponse:
         """处理 aiocqhttp 客户端连接"""
+        # 验证 access_token
+        if self.access_token:
+            client_token = request.query.get("access_token", "")
+            if client_token != self.access_token:
+                logger.warning(
+                    f"[{self.display_name}] aiocqhttp客户端连接被拒绝: access_token 验证失败"
+                )
+                return web.Response(status=401, text="Unauthorized: Invalid access_token")
+
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
