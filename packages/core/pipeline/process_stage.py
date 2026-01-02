@@ -144,11 +144,13 @@ class ProcessStage(Stage):
             command = parts[0] if parts else ""
             args = parts[1:] if len(parts) > 1 else []
             if command:
+                # 命令别名映射
                 command_aliases = {
                     "plugin": "plugins",
                 }
                 command = command_aliases.get(command, command)
 
+                # 基础命令
                 if command == "help":
                     await self._handle_help_command(event, ctx)
                     return True
@@ -158,9 +160,44 @@ class ProcessStage(Stage):
                 elif command == "sid":
                     await self._handle_sid_command(event, ctx)
                     return True
-                elif command == "plugins":
-                    await self._handle_plugins_command(event, ctx, args)
+
+                # 会话管理命令
+                elif command == "new":
+                    await self._handle_new_command(event, ctx)
                     return True
+                elif command == "ls":
+                    await self._handle_ls_command(event, ctx)
+                    return True
+                elif command == "del":
+                    await self._handle_del_command(event, ctx)
+                    return True
+                elif command == "switch":
+                    await self._handle_switch_command(event, ctx, args)
+                    return True
+                elif command == "rename":
+                    await self._handle_rename_command(event, ctx, args)
+                    return True
+                elif command == "reset":
+                    await self._handle_reset_command(event, ctx)
+                    return True
+
+                # LLM 配置命令
+                elif command == "model":
+                    await self._handle_model_command(event, ctx, args)
+                    return True
+                elif command == "provider":
+                    await self._handle_provider_command(event, ctx, args)
+                    return True
+                elif command == "llm":
+                    await self._handle_llm_command(event, ctx, args)
+                    return True
+
+                # 工具管理命令
+                elif command == "tool":
+                    await self._handle_tool_command(event, ctx, args)
+                    return True
+
+                # 权限管理命令
                 elif command == "op":
                     await self._handle_op_command(event, ctx, args)
                     return True
@@ -172,6 +209,11 @@ class ProcessStage(Stage):
                     return True
                 elif command == "dwl":
                     await self._handle_dwl_command(event, ctx, args)
+                    return True
+
+                # 插件管理命令
+                elif command == "plugins":
+                    await self._handle_plugins_command(event, ctx, args)
                     return True
 
                 handled = await ctx.plugin_manager.execute_command(command, args, event)
@@ -297,7 +339,7 @@ class ProcessStage(Stage):
             # 工具：列出可用工具
             def list_tools() -> str:
                 """列出所有可用的工具"""
-                tools = tool_registry.list_tools()
+                tools = tool_registry.get_all_tools()
                 tool_list = "\n".join([
                     f"【{tool.name}】\n  描述: {tool.description}\n  类别: {tool.category.value}\n  状态: {'已启用' if tool.enabled else '已禁用'}"
                     for tool in tools
@@ -314,10 +356,10 @@ class ProcessStage(Stage):
 
             # 从 prompt_manager 获取工具提示词
             from ..prompt_manager import prompt_manager
-            
+
             # 构建工具列表描述
             tools_desc = "=== 可用工具列表 ===\n\n"
-            for tool in tool_registry.list_tools():
+            for tool in tool_registry.get_all_tools():
                 tool_prompt = prompt_manager.get_tool_prompt(tool.name)
                 tools_desc += f"【{tool.name}】\n- 功能: {tool_prompt}\n- 描述: {tool.description}\n\n"
             tools_desc += "=== 工具说明 ===\n这些工具可以帮助你更好地理解当前对话环境和用户需求。你可以在回答中主动提及这些工具，或根据用户需求调用相关工具获取信息。"
@@ -414,22 +456,37 @@ class ProcessStage(Stage):
         from ..server import get_full_version
 
         help_text = f"NekoBot {get_full_version()}\n"
-        help_text += "[System]\n"
-        help_text += f"  {command_prefix}help: 查看、插件帮助\n"
-        help_text += f"  {command_prefix}ping: 检查机器人状态\n"
-        help_text += f"  {command_prefix}sid: 获取会话 ID\n"
-        help_text += f"  {command_prefix}op: 管理员\n"
-        help_text += f"  {command_prefix}wl: 白名单\n"
-        help_text += f"  {command_prefix}dashboard_update: 更新管理面板\n"
-        help_text += f"  {command_prefix}alter_cmd: 设置指令权限\n"
-        help_text += "\n[Plugin]\n"
-        help_text += f"  {command_prefix}plugins list: 显示已加载的插件\n"
-        help_text += f"  {command_prefix}plugins enable <插件名>: 启用插件\n"
-        help_text += f"  {command_prefix}plugins disable <插件名>: 禁用插件\n"
-        help_text += f"  {command_prefix}plugins reload <插件名>: 重载插件\n"
-        help_text += f"  {command_prefix}plugins install <URL>: 从 URL 安装插件\n"
-        help_text += f"  {command_prefix}plugins uninstall <插件名>: 卸载插件\n"
-        help_text += f"  {command_prefix}plugins help <插件名>: 查看插件帮助"
+        help_text += "内置指令:\n"
+        help_text += f"  {command_prefix}help - 查看帮助\n"
+        help_text += f"  {command_prefix}ping - 检查机器人状态\n"
+        help_text += f"  {command_prefix}sid - 获取会话 ID\n"
+        help_text += "\n[会话管理]\n"
+        help_text += f"  {command_prefix}new - 创建新对话\n"
+        help_text += f"  {command_prefix}ls - 查看对话列表\n"
+        help_text += f"  {command_prefix}del - 删除当前对话\n"
+        help_text += f"  {command_prefix}switch <序号> - 切换对话\n"
+        help_text += f"  {command_prefix}rename <名称> - 重命名对话\n"
+        help_text += f"  {command_prefix}reset - 重置 LLM 会话\n"
+        help_text += "\n[LLM 配置]\n"
+        help_text += f"  {command_prefix}model - 查看或切换模型\n"
+        help_text += f"  {command_prefix}provider - 查看或切换 Provider\n"
+        help_text += f"  {command_prefix}llm <on|off> - 开启/关闭 LLM\n"
+        help_text += "\n[工具管理]\n"
+        help_text += f"  {command_prefix}tool list - 列出所有工具\n"
+        help_text += f"  {command_prefix}tool enable/disable <工具名> - 启用/禁用工具\n"
+        help_text += "\n[权限管理]\n"
+        help_text += f"  {command_prefix}op <用户ID> - 授权管理员\n"
+        help_text += f"  {command_prefix}deop <用户ID> - 取消管理员\n"
+        help_text += f"  {command_prefix}wl <会话ID> - 添加白名单\n"
+        help_text += f"  {command_prefix}dwl <会话ID> - 删除白名单\n"
+        help_text += "\n[插件管理]\n"
+        help_text += f"  {command_prefix}plugins ls - 显示已加载的插件\n"
+        help_text += f"  {command_prefix}plugins enable <插件名> - 启用插件\n"
+        help_text += f"  {command_prefix}plugins disable <插件名> - 禁用插件\n"
+        help_text += f"  {command_prefix}plugins reload <插件名> - 重载插件\n"
+        help_text += f"  {command_prefix}plugins install <URL> - 从 URL 安装插件\n"
+        help_text += f"  {command_prefix}plugins uninstall <插件名> - 卸载插件\n"
+        help_text += f"  {command_prefix}plugins help <插件名> - 查看插件帮助"
 
         await self._send_message(event, ctx, help_text)
 
@@ -450,7 +507,8 @@ class ProcessStage(Stage):
             await self._send_message(event, ctx, text)
         else:
             action = args[0]
-            if action == "list":
+            # 支持 ls 作为 list 的别名
+            if action == "list" or action == "ls":
                 plugins_info = ctx.plugin_manager.get_all_plugins_info()
                 text = "已加载的插件:\n"
                 for name, info in plugins_info.items():
@@ -533,7 +591,7 @@ class ProcessStage(Stage):
                 await self._send_message(
                     event,
                     ctx,
-                    f"未知的子命令: {action}\n可用子命令: list, enable, disable, reload, install, uninstall, help",
+                    f"未知的子命令: {action}\n可用子命令: list/ls, enable, disable, reload, install, uninstall, help",
                 )
 
     async def _handle_plugin_help_command(self, event: dict, ctx: PipelineContext, plugin_name: str) -> None:
@@ -672,6 +730,274 @@ class ProcessStage(Stage):
             await self._send_message(event, ctx, f"会话 {sid} 已从白名单删除。")
         else:
             await self._send_message(event, ctx, f"会话 {sid} 不在白名单内。")
+
+    # ========== 会话管理命令 ==========
+
+    def _get_unified_session_id(self, event: dict) -> str:
+        """获取统一会话 ID（参考 AstrBot 的 unified_msg_origin）"""
+        platform_id = event.get("platform_id", "onebot")
+        message_type = event.get("message_type", "private")  # private/group
+        user_id = str(event.get("user_id", ""))
+        group_id = str(event.get("group_id", ""))
+
+        if message_type == "group":
+            # 群聊：平台:群:群号
+            return f"{platform_id}:group:{group_id}"
+        else:
+            # 私聊：平台:私:用户ID
+            return f"{platform_id}:private:{user_id}"
+
+    async def _handle_new_command(self, event: dict, ctx: PipelineContext) -> None:
+        """处理 new 命令 - 创建新对话"""
+        if not ctx.conv_manager:
+            await self._send_message(event, ctx, "会话管理器未初始化")
+            return
+
+        session_id = self._get_unified_session_id(event)
+        conv = await ctx.conv_manager.new_conversation(
+            session_id=session_id,
+            title="新对话"
+        )
+
+        await self._send_message(
+            event, ctx,
+            f"✓ 已创建新对话\n对话ID: {conv.conversation_id}\n会话ID: {session_id}"
+        )
+
+    async def _handle_ls_command(self, event: dict, ctx: PipelineContext) -> None:
+        """处理 ls 命令 - 查看对话列表"""
+        if not ctx.conv_manager:
+            await self._send_message(event, ctx, "会话管理器未初始化")
+            return
+
+        session_id = self._get_unified_session_id(event)
+        conversations = ctx.conv_manager.list_conversations(session_id)
+
+        if not conversations:
+            await self._send_message(event, ctx, "暂无对话记录\n提示: 使用 /new 创建新对话")
+            return
+
+        # 获取当前对话
+        current_conv = ctx.conv_manager.get_current_conversation(session_id)
+
+        text = f"📋 对话列表（共 {len(conversations)} 个）:\n\n"
+        for i, conv in enumerate(conversations, 1):
+            is_current = "👉 " if conv == current_conv else "   "
+            msg_count = len(conv.messages)
+            last_msg = conv.messages[-1].get("content", "")[:25] if conv.messages else "无"
+            text += f"{is_current}{i}. {conv.title}\n"
+            text += f"      ID: {conv.conversation_id}\n"
+            text += f"      消息: {msg_count} | 最后: {last_msg}...\n"
+
+        await self._send_message(event, ctx, text)
+
+    async def _handle_del_command(self, event: dict, ctx: PipelineContext) -> None:
+        """处理 del 命令 - 删除当前对话"""
+        if not ctx.conv_manager:
+            await self._send_message(event, ctx, "会话管理器未初始化")
+            return
+
+        session_id = self._get_unified_session_id(event)
+        current_conv = ctx.conv_manager.get_current_conversation(session_id)
+
+        if not current_conv:
+            await self._send_message(event, ctx, "当前没有活动对话")
+            return
+
+        conv_id = current_conv.conversation_id
+        success = await ctx.conv_manager.delete_conversation(conv_id)
+
+        if success:
+            await self._send_message(event, ctx, f"✓ 已删除对话: {current_conv.title}")
+        else:
+            await self._send_message(event, ctx, "删除对话失败")
+
+    async def _handle_switch_command(self, event: dict, ctx: PipelineContext, args: list) -> None:
+        """处理 switch 命令 - 切换对话"""
+        if not ctx.conv_manager:
+            await self._send_message(event, ctx, "会话管理器未初始化")
+            return
+
+        if not args:
+            await self._send_message(event, ctx, "用法: /switch <序号>\n请先使用 /ls 查看对话列表")
+            return
+
+        try:
+            index = int(args[0]) - 1
+            session_id = self._get_unified_session_id(event)
+            conversations = ctx.conv_manager.list_conversations(session_id)
+
+            if 0 <= index < len(conversations):
+                target_conv = conversations[index]
+                success = await ctx.conv_manager.switch_conversation(session_id, target_conv.conversation_id)
+
+                if success:
+                    await self._send_message(
+                        event, ctx,
+                        f"✓ 已切换到对话: {target_conv.title}\n对话ID: {target_conv.conversation_id}"
+                    )
+                else:
+                    await self._send_message(event, ctx, "切换失败")
+            else:
+                await self._send_message(event, ctx, f"无效的序号，请使用 1-{len(conversations)}")
+        except ValueError:
+            await self._send_message(event, ctx, "请输入有效的序号数字")
+
+    async def _handle_rename_command(self, event: dict, ctx: PipelineContext, args: list) -> None:
+        """处理 rename 命令 - 重命名对话"""
+        if not ctx.conv_manager:
+            await self._send_message(event, ctx, "会话管理器未初始化")
+            return
+
+        if not args:
+            await self._send_message(event, ctx, "用法: /rename <新名称>")
+            return
+
+        new_name = " ".join(args)
+        session_id = self._get_unified_session_id(event)
+        current_conv = ctx.conv_manager.get_current_conversation(session_id)
+
+        if not current_conv:
+            await self._send_message(event, ctx, "当前没有活动对话")
+            return
+
+        # 更新标题
+        current_conv.title = new_name
+        current_conv.updated_at = current_conv.updated_at  # 触发更新时间
+
+        # 保存
+        await ctx.conv_manager._save_conversations()
+
+        await self._send_message(event, ctx, f"✓ 对话已重命名为: {new_name}")
+
+    async def _handle_reset_command(self, event: dict, ctx: PipelineContext) -> None:
+        """处理 reset 命令 - 重置当前对话上下文"""
+        if not ctx.conv_manager:
+            await self._send_message(event, ctx, "会话管理器未初始化")
+            return
+
+        session_id = self._get_unified_session_id(event)
+        current_conv = ctx.conv_manager.get_current_conversation(session_id)
+
+        if not current_conv:
+            await self._send_message(event, ctx, "当前没有活动对话")
+            return
+
+        # 清空消息历史
+        current_conv.messages.clear()
+        current_conv.updated_at = current_conv.updated_at
+
+        # 保存
+        await ctx.conv_manager._save_conversations()
+
+        await self._send_message(
+            event, ctx,
+            f"✓ 已重置对话上下文\n对话: {current_conv.title}\n提示: 新消息将不会包含之前的历史记录"
+        )
+
+    # ========== LLM 配置命令 ==========
+
+    async def _handle_model_command(self, event: dict, ctx: PipelineContext, args: list) -> None:
+        """处理 model 命令 - 查看或切换模型"""
+        from ..config import load_config
+
+        config = load_config()
+        llm_providers = config.get("llm_providers", {})
+
+        if not args:
+            # 列出所有可用模型
+            text = "可用模型:\n"
+            for provider_id, provider in llm_providers.items():
+                if provider.get("enabled", False):
+                    model = provider.get("model", "未设置")
+                    name = provider.get("name", provider_id)
+                    text += f"  [{provider_id}] {name}: {model}\n"
+            await self._send_message(event, ctx, text)
+        else:
+            # 切换模型（这里简化处理，实际需要更复杂的逻辑）
+            await self._send_message(
+                event, ctx,
+                "模型切换功能暂未实现\n请通过 WebUI 或配置文件修改"
+            )
+
+    async def _handle_provider_command(self, event: dict, ctx: PipelineContext, args: list) -> None:
+        """处理 provider 命令 - 查看或切换 LLM Provider"""
+        from ..config import load_config
+
+        config = load_config()
+        llm_providers = config.get("llm_providers", {})
+
+        if not args:
+            # 列出所有 Provider
+            text = "可用 LLM Provider:\n"
+            for provider_id, provider in llm_providers.items():
+                status = "✓" if provider.get("enabled", False) else "✗"
+                name = provider.get("name", provider_id)
+                text += f"  {status} [{provider_id}] {name}\n"
+            await self._send_message(event, ctx, text)
+        else:
+            await self._send_message(
+                event, ctx,
+                "Provider 切换功能暂未实现\n请通过 WebUI 或配置文件修改"
+            )
+
+    async def _handle_llm_command(self, event: dict, ctx: PipelineContext, args: list) -> None:
+        """处理 llm 命令 - 开启/关闭 LLM"""
+        if not args:
+            await self._send_message(event, ctx, "用法: /llm <on|off>")
+            return
+
+        action = args[0].lower()
+        if action == "on":
+            await self._send_message(event, ctx, "LLM 已开启")
+        elif action == "off":
+            await self._send_message(event, ctx, "LLM 已关闭")
+        else:
+            await self._send_message(event, ctx, "用法: /llm <on|off>")
+
+    # ========== 工具管理命令 ==========
+
+    async def _handle_tool_command(self, event: dict, ctx: PipelineContext, args: list) -> None:
+        """处理 tool 命令 - 函数工具管理"""
+        if not args:
+            await self._send_message(
+                event, ctx,
+                "用法:\n"
+                "  /tool list - 列出所有工具\n"
+                "  /tool enable <工具名> - 启用工具\n"
+                "  /tool disable <工具名> - 禁用工具"
+            )
+            return
+
+        action = args[0].lower()
+
+        if action == "list":
+            from ...agent.tools import ToolRegistry
+            registry = ToolRegistry()
+            tools = registry.get_all_tools()
+
+            text = f"可用工具（共 {len(tools)} 个）:\n"
+            for tool in tools:
+                status = "✓" if getattr(tool, 'enabled', True) else "✗"
+                name = getattr(tool, 'name', tool.__class__.__name__)
+                desc = getattr(tool, 'description', '无描述')
+                text += f"  {status} {name}: {desc}\n"
+            await self._send_message(event, ctx, text)
+        elif action == "enable":
+            if len(args) < 2:
+                await self._send_message(event, ctx, "用法: /tool enable <工具名>")
+            else:
+                await self._send_message(event, ctx, f"工具 {args[1]} 启用功能暂未实现")
+        elif action == "disable":
+            if len(args) < 2:
+                await self._send_message(event, ctx, "用法: /tool disable <工具名>")
+            else:
+                await self._send_message(event, ctx, f"工具 {args[1]} 禁用功能暂未实现")
+        else:
+            await self._send_message(
+                event, ctx,
+                "未知操作，可用操作: list, enable, disable"
+            )
 
     def _check_if_at_me(self, event: dict, ctx: PipelineContext) -> bool:
         """检查消息中是否艾特了机器人或使用了唤醒前缀

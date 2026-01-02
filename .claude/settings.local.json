@@ -4,7 +4,8 @@
       "Bash(python:*)",
       "Bash(uv run:*)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(find:*)"
     ]
   }
 }

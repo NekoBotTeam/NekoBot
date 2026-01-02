@@ -102,7 +102,7 @@ class DynamicRegisterManager:
                     module = importlib.import_module(module_name)
 
                     # 遍历模块中的所有类，找到继承自BaseLLMProvider的类
-                    from .base import BaseLLMProvider
+                    from packages.llm.base import BaseLLMProvider
                     found = False
                     for name, cls in module.__dict__.items():
                         if isinstance(cls, type) and issubclass(cls, BaseLLMProvider) and cls != BaseLLMProvider:
@@ -162,7 +162,7 @@ class DynamicRegisterManager:
                         logger.info(f"成功注册平台适配器: {adapter_type}")
                     else:
                         # 遍历模块中的所有类，找到继承自BasePlatform的类
-                        from ..platform.base import BasePlatform
+                        from packages.platform.base import BasePlatform
                         found = False
                         for name, cls in module.__dict__.items():
                             if isinstance(cls, type) and issubclass(cls, BasePlatform) and cls != BasePlatform:
@@ -178,7 +178,7 @@ class DynamicRegisterManager:
                     logger.error(f"动态注册平台适配器 {adapter_type} 失败: {e}")
         
         # 更新全局变量
-        from ..platform.register import platform_cls_map
+        from packages.platform.register import platform_cls_map
         platform_cls_map.clear()
         platform_cls_map.update(registered_adapters)
         
@@ -253,7 +253,7 @@ class DynamicRegisterManager:
                         logger.info(f"成功注册平台适配器: {adapter_type}，使用类: {class_name}")
                     else:
                         # 遍历模块中的所有类，找到继承自BasePlatform的类
-                        from ..platform.base import BasePlatform
+                        from packages.platform.base import BasePlatform
                         found = False
                         for name, cls in module.__dict__.items():
                             if isinstance(cls, type) and issubclass(cls, BasePlatform):
@@ -269,7 +269,7 @@ class DynamicRegisterManager:
                     logger.error(f"动态注册平台适配器 {adapter_type} 失败: {e}")
         
         # 更新全局变量
-        from ..platform.register import platform_cls_map
+        from packages.platform.register import platform_cls_map
         platform_cls_map.clear()
         platform_cls_map.update(registered_adapters)
         

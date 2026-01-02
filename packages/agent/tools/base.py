@@ -24,30 +24,38 @@ class ToolCategory(Enum):
 @dataclass
 class ToolDefinition:
     """工具定义
-    
+
     用于描述工具的元数据和配置信息
     """
     name: str
     """工具名称"""
-    
+
     category: ToolCategory
     """工具类别"""
-    
+
     description: str
     """工具描述"""
-    
+
     function: Callable
     """工具函数"""
-    
+
     enabled: bool = True
     """是否启用"""
-    
+
     requires_permission: bool = False
     """是否需要权限"""
-    
+
     permission_level: str = "user"
     """权限级别"""
-    
+
+    parameters_schema: Dict[str, Any] = None
+    """参数Schema定义"""
+
+    def __post_init__(self):
+        """初始化后处理"""
+        if self.parameters_schema is None:
+            self.parameters_schema = {}
+
     def __repr__(self) -> str:
         return f"ToolDefinition(name={self.name}, category={self.category}, enabled={self.enabled})"
 

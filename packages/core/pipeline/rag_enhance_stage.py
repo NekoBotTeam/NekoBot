@@ -7,7 +7,7 @@ from typing import AsyncGenerator, Optional
 from loguru import logger
 from .stage import Stage, register_stage
 from .context import PipelineContext
-from ..core.knowledge_base import KnowledgeManager
+from ..knowledge_base import KnowledgeManager
 from ..config import load_config
 
 

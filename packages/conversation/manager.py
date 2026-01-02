@@ -101,6 +101,7 @@ class Session:
     channel_id: str
     user_id: str
     current_conversation_id: str | None = None
+    conversation_ids: list[str] = field(default_factory=list)  # 会话的所有对话ID列表
     metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
 
@@ -117,6 +118,7 @@ class Session:
             "channel_id": self.channel_id,
             "user_id": self.user_id,
             "current_conversation_id": self.current_conversation_id,
+            "conversation_ids": self.conversation_ids,
             "metadata": self.metadata,
             "created_at": self.created_at.isoformat(),
         }
@@ -132,6 +134,7 @@ class Session:
             channel_id=data["channel_id"],
             user_id=data["user_id"],
             current_conversation_id=data.get("current_conversation_id"),
+            conversation_ids=data.get("conversation_ids", []),
             metadata=data.get("metadata", {}),
             created_at=created_at,
         )
@@ -299,12 +302,26 @@ class ConversationManager:
 
         self._conversations[conv.conversation_id] = conv
 
+        # 确保会话存在，不存在则创建
+        if session_id not in self._sessions:
+            self._sessions[session_id] = Session(
+                session_id=session_id,
+                platform_id="",  # 从 session_id 解析
+                channel_id="",
+                user_id=""
+            )
+
+        # 添加到会话的对话列表
+        session = self._sessions[session_id]
+        if conv.conversation_id not in session.conversation_ids:
+            session.conversation_ids.append(conv.conversation_id)
+
         # 设置为当前对话
-        if session_id in self._sessions:
-            self._sessions[session_id].current_conversation_id = conv.conversation_id
+        session.current_conversation_id = conv.conversation_id
 
         # 自动保存
         await self._save_conversations()
+        await self._save_sessions()
 
         logger.info(f"Created new conversation: {conv.conversation_id} for session: {session_id}")
         return conv
@@ -312,6 +329,10 @@ class ConversationManager:
     def get_conversation(self, conversation_id: str) -> Conversation | None:
         """获取对话"""
         return self._conversations.get(conversation_id)
+
+    def get_session(self, session_id: str) -> Session | None:
+        """获取会话"""
+        return self._sessions.get(session_id)
 
     def get_current_conversation(self, session_id: str) -> Conversation | None:
         """获取当前对话"""
@@ -326,6 +347,99 @@ class ConversationManager:
             conv for conv in self._conversations.values()
             if conv.session_id == session_id
         ]
+
+    def create_conversation(
+        self,
+        session_id: str,
+        title: str | None = None,
+        persona_id: str | None = None,
+        kb_ids: list[str] | None = None,
+    ) -> Conversation:
+        """创建对话（同步版本，用于兼容）"""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # 如果在异步上下文中，创建任务
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    return pool.submit(
+                        asyncio.run,
+                        self.new_conversation(session_id, title, persona_id)
+                    ).result()
+            else:
+                return asyncio.run(self.new_conversation(session_id, title, persona_id))
+        except Exception:
+            # 降级：同步创建
+            conv = Conversation(
+                conversation_id=uuid.uuid4().hex[:16],
+                session_id=session_id,
+                title=title or "新对话",
+                persona_id=persona_id,
+                kb_ids=kb_ids or []
+            )
+            self._conversations[conv.conversation_id] = conv
+            return conv
+
+    def update_conversation(
+        self,
+        conversation_id: str,
+        title: str | None = None,
+        persona_id: str | None = None,
+        kb_ids: list[str] | None = None,
+    ) -> bool:
+        """更新对话"""
+        conv = self._conversations.get(conversation_id)
+        if not conv:
+            return False
+
+        if title is not None:
+            conv.title = title
+        if persona_id is not None:
+            conv.persona_id = persona_id
+        if kb_ids is not None:
+            conv.kb_ids = kb_ids
+
+        conv.updated_at = datetime.now()
+
+        # 异步保存（不等待）
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self._save_conversations())
+            else:
+                asyncio.run(self._save_conversations())
+        except Exception:
+            pass
+
+        return True
+
+    def add_message(
+        self,
+        conversation_id: str,
+        role: str,
+        content: str,
+    ) -> bool:
+        """添加消息到对话"""
+        conv = self._conversations.get(conversation_id)
+        if not conv:
+            return False
+
+        conv.add_message(role, content)
+
+        # 异步保存（不等待）
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(self._save_conversations())
+            else:
+                asyncio.run(self._save_conversations())
+        except Exception:
+            pass
+
+        return True
 
     async def switch_conversation(
         self,
@@ -365,11 +479,21 @@ class ConversationManager:
             return False
 
         conv = self._conversations.pop(conversation_id)
+        session_id = conv.session_id
 
-        # 如果是当前对话，清除引用
-        for session in self._sessions.values():
+        # 从会话的对话列表中移除
+        if session_id in self._sessions:
+            session = self._sessions[session_id]
+            if conversation_id in session.conversation_ids:
+                session.conversation_ids.remove(conversation_id)
+
+            # 如果是当前对话，清除引用或切换到其他对话
             if session.current_conversation_id == conversation_id:
-                session.current_conversation_id = None
+                # 尝试切换到其他对话
+                if session.conversation_ids:
+                    session.current_conversation_id = session.conversation_ids[-1]
+                else:
+                    session.current_conversation_id = None
 
         # 保存变更
         await self._save_sessions()

@@ -75,17 +75,6 @@ def register_command(
     return descriptor
 
 
-def unregister_command(handler_full_name: str) -> None:
-    """注销命令
-
-    Args:
-        handler_full_name: 处理函数完整名称
-    """
-    if handler_full_name in _command_registry:
-        del _command_registry[handler_full_name]
-        logger.info(f"注销命令: {handler_full_name}")
-
-
 def unregister_plugin_commands(plugin_name: str) -> int:
     """注销插件的所有命令
 

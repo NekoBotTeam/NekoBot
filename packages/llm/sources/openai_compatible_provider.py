@@ -9,9 +9,9 @@ from typing import Any, AsyncGenerator, Optional
 
 from loguru import logger
 
-from ..base import BaseLLMProvider
-from ..register import register_llm_provider, LLMProviderType
-from ..entities import LLMResponse, TokenUsage
+from packages.llm.base import BaseLLMProvider
+from packages.llm.register import register_llm_provider, LLMProviderType
+from packages.llm.entities import LLMResponse, TokenUsage
 
 
 @register_llm_provider(

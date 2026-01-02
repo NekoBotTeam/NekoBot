@@ -128,19 +128,44 @@ async def start_server() -> None:
     logger.info("所有插件已启用")
 
     # 7. 初始化 Pipeline 调度器
-    pipeline_scheduler = PipelineScheduler(
-        [
-            WhitelistCheckStage(),
-            ContentSafetyCheckStage(),
-            RateLimitStage(),
-            SessionStatusCheckStage(),
-            WakingCheckStage(),
-            ProcessStage(),
-            ResultDecorateStage(),
-            RespondStage(),
-        ]
-    )
-    logger.info("Pipeline 调度器已初始化")
+    # 根据配置动态构建阶段列表
+    stages = [
+        WhitelistCheckStage(),
+        ContentSafetyCheckStage(),
+        RateLimitStage(),
+        SessionStatusCheckStage(),
+        WakingCheckStage(),
+    ]
+
+    # 可选：RAG 增强阶段
+    if CONFIG.get("pipeline_stages", {}).get("rag_enabled", False):
+        try:
+            from .pipeline.rag_enhance_stage import RAGEnhanceStage
+            stages.append(RAGEnhanceStage())
+            logger.info("RAG 增强阶段已启用")
+        except Exception as e:
+            logger.warning(f"RAG 增强阶段加载失败: {e}，已跳过")
+
+    # 核心处理阶段
+    stages.append(ProcessStage())
+
+    # 可选：会话摘要阶段
+    if CONFIG.get("pipeline_stages", {}).get("session_summary_enabled", False):
+        try:
+            from .pipeline.session_summary_stage import SessionSummaryStage
+            stages.append(SessionSummaryStage())
+            logger.info("会话摘要阶段已启用")
+        except Exception as e:
+            logger.warning(f"会话摘要阶段加载失败: {e}，已跳过")
+
+    # 最后阶段
+    stages.extend([
+        ResultDecorateStage(),
+        RespondStage(),
+    ])
+
+    pipeline_scheduler = PipelineScheduler(stages)
+    logger.info(f"Pipeline 调度器已初始化（共 {len(stages)} 个阶段）")
 
     # 8. 启动事件处理循环
     asyncio.create_task(handle_events(pipeline_scheduler))

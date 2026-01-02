@@ -3,7 +3,7 @@
 提供 Pipeline 执行所需的上下文信息
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
 
@@ -27,8 +27,12 @@ class PipelineContext:
     llm_manager: Any
     """LLM 管理器实例"""
 
+    # 会话管理器
+    conv_manager: Optional[Any] = None
+    """会话管理器实例"""
+
     # 事件队列
-    event_queue: Any
+    event_queue: Any = None
     """事件队列"""
 
     # 其他上下文数据

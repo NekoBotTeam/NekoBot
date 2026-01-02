@@ -73,6 +73,11 @@ def load_config() -> Dict[str, Any]:
             "private_message_needs_wake_prefix": False,
             # 是否忽略艾特全体成员
             "ignore_at_all": False,
+            # Pipeline 阶段开关
+            "pipeline_stages": {
+                "rag_enabled": False,  # RAG 增强阶段（需要知识库配置）
+                "session_summary_enabled": False,  # 会话摘要阶段
+            },
         }
     else:
         try:
@@ -96,6 +101,19 @@ def load_config() -> Dict[str, Any]:
 
     if "ignore_at_all" not in config:
         config["ignore_at_all"] = False
+
+    # 确保 pipeline_stages 配置存在
+    if "pipeline_stages" not in config:
+        config["pipeline_stages"] = {
+            "rag_enabled": False,
+            "session_summary_enabled": False,
+        }
+    else:
+        # 确保所有必需的键都存在
+        if "rag_enabled" not in config["pipeline_stages"]:
+            config["pipeline_stages"]["rag_enabled"] = False
+        if "session_summary_enabled" not in config["pipeline_stages"]:
+            config["pipeline_stages"]["session_summary_enabled"] = False
 
     # 合并平台源配置
     config["platforms"] = load_platforms_sources()

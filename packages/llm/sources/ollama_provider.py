@@ -7,9 +7,9 @@ import httpx
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 
-from ..base import BaseLLMProvider
-from ..entities import LLMResponse, TokenUsage
-from ..register import register_llm_provider, LLMProviderType
+from packages.llm.base import BaseLLMProvider
+from packages.llm.entities import LLMResponse, TokenUsage
+from packages.llm.register import register_llm_provider, LLMProviderType
 
 
 @register_llm_provider(

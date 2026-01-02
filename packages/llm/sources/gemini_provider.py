@@ -13,9 +13,9 @@ from google.genai.errors import APIError
 
 from loguru import logger
 
-from ..base import BaseLLMProvider
-from ..register import register_llm_provider, LLMProviderType
-from ..entities import LLMResponse, TokenUsage
+from packages.llm.base import BaseLLMProvider
+from packages.llm.register import register_llm_provider, LLMProviderType
+from packages.llm.entities import LLMResponse, TokenUsage
 
 
 class SuppressNonTextPartsWarning:
