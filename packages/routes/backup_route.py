@@ -15,7 +15,7 @@ from quart import request, send_file
 from .route import Route, Response, RouteContext
 
 # 备份目录
-BACKUP_DIR = Path(__file__).parent.parent.parent / "data" / "backups"
+BACKUP_DIR = Path(__file__).parent.parent.parent / "backups"
 # 数据库路径
 DATABASE_PATH = Path(__file__).parent.parent.parent / "data" / "data.db"
 # 配置文件目录
