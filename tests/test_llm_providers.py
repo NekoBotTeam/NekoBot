@@ -6,11 +6,11 @@
 import pytest
 from unittest.mock import MagicMock, patch
 
-from packages.llm import (
+from packages.provider import (
     LLMResponse,
     TokenUsage,
 )
-from packages.llm.sources import (
+from packages.provider.sources import (
     claude_provider,
     deepseek_provider,
     dashscope_provider,

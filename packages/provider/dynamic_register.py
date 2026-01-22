@@ -29,17 +29,17 @@ class DynamicRegisterManager:
         
         # 动态导入映射
         self.llm_provider_module_map = {
-            "openai": "packages.llm.sources.openai_provider",
-            "claude": "packages.llm.sources.claude_provider",
-            "gemini": "packages.llm.sources.gemini_provider",
-            "dashscope": "packages.llm.sources.dashscope_provider",
-            "deepseek": "packages.llm.sources.deepseek_provider",
-            "moonshot": "packages.llm.sources.moonshot_provider",
-            "zhipu": "packages.llm.sources.zhipu_provider",
-            "glm": "packages.llm.sources.glm_provider",
-            "ollama": "packages.llm.sources.ollama_provider",
-            "lm_studio": "packages.llm.sources.lm_studio_provider",
-            "openai_compatible": "packages.llm.sources.openai_compatible_provider",
+            "openai": "packages.provider.sources.openai_provider",
+            "claude": "packages.provider.sources.claude_provider",
+            "gemini": "packages.provider.sources.gemini_provider",
+            "dashscope": "packages.provider.sources.dashscope_provider",
+            "deepseek": "packages.provider.sources.deepseek_provider",
+            "moonshot": "packages.provider.sources.moonshot_provider",
+            "zhipu": "packages.provider.sources.zhipu_provider",
+            "glm": "packages.provider.sources.glm_provider",
+            "ollama": "packages.provider.sources.ollama_provider",
+            "lm_studio": "packages.provider.sources.lm_studio_provider",
+            "openai_compatible": "packages.provider.sources.openai_compatible_provider",
         }
         
         self.platform_adapter_module_map = {
@@ -102,7 +102,7 @@ class DynamicRegisterManager:
                     module = importlib.import_module(module_name)
 
                     # 遍历模块中的所有类，找到继承自BaseLLMProvider的类
-                    from packages.llm.base import BaseLLMProvider
+                    from packages.provider.base import BaseLLMProvider
                     found = False
                     for name, cls in module.__dict__.items():
                         if isinstance(cls, type) and issubclass(cls, BaseLLMProvider) and cls != BaseLLMProvider:

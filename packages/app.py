@@ -58,7 +58,7 @@ from .core.server import (
 )
 
 # 导入动态注册管理器
-from .llm.dynamic_register import dynamic_register_manager
+from .provider.dynamic_register import dynamic_register_manager
 
 # 导入新架构组件
 from .conversation import ConversationManager

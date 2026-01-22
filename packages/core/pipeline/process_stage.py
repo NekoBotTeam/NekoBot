@@ -244,12 +244,12 @@ class ProcessStage(Stage):
     async def _trigger_llm_response(self, event: dict, ctx: PipelineContext) -> None:
         """触发 LLM 回复"""
         try:
-            from ...llm.context_manager import (
+            from ...provider.context_manager import (
                 LLMContextManager,
                 ContextConfig,
                 ContextCompressionStrategy,
             )
-            from ...llm.entities import LLMResponse
+            from ...provider.entities import LLMResponse
             from ...agent.tools import ToolRegistry, ToolDefinition, ToolCategory
             from ..config import load_config
 
@@ -273,7 +273,7 @@ class ProcessStage(Stage):
                 return
 
             provider_type = provider_config.get("type", "unknown")
-            from ...llm.register import llm_provider_cls_map
+            from ...provider.register import llm_provider_cls_map
 
             provider_meta = llm_provider_cls_map.get(provider_type)
             if not provider_meta:

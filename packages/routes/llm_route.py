@@ -10,7 +10,7 @@ from typing import Dict, Any
 from loguru import logger
 
 from .route import Route, Response, RouteContext
-from ..llm.register import llm_provider_cls_map
+from ..provider.register import llm_provider_cls_map
 
 
 LLM_PROVIDERS_PATH = (

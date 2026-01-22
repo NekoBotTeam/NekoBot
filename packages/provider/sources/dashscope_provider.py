@@ -11,9 +11,9 @@ from dashscope.aigc.generation import AioGeneration
 
 from loguru import logger
 
-from packages.llm.base import BaseLLMProvider
-from packages.llm.register import register_llm_provider, LLMProviderType
-from packages.llm.entities import LLMResponse, TokenUsage
+from packages.provider.base import BaseLLMProvider
+from packages.provider.register import register_llm_provider, LLMProviderType
+from packages.provider.entities import LLMResponse, TokenUsage
 
 
 @register_llm_provider(

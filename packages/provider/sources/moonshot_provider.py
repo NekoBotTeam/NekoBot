@@ -1,42 +1,42 @@
-"""智谱 GLM LLM 提供商
+"""Moonshot (Kimi) LLM 提供商
 
-支持智谱 GLM-4、GLM-3 等模型
-使用 OpenAI 兼容的 API
+Moonshot AI API 兼容 OpenAI 格式
 """
 
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Optional
 
 from loguru import logger
 
-from packages.llm.base import BaseLLMProvider
-from packages.llm.register import register_llm_provider, LLMProviderType
-from packages.llm.entities import LLMResponse, TokenUsage
+from packages.provider.base import BaseLLMProvider
+from packages.provider.register import register_llm_provider, LLMProviderType
+from packages.provider.entities import LLMResponse, TokenUsage
 from openai import AsyncOpenAI
 
 
 @register_llm_provider(
-    provider_type_name="glm",
-    desc="智谱 GLM 提供商 (GLM-4, GLM-3 等)",
+    provider_type_name="moonshot",
+    desc="Moonshot AI 提供商 (Kimi 系列)",
     provider_type=LLMProviderType.CHAT_COMPLETION,
     default_config_tmpl={
-        "type": "glm",
+        "type": "moonshot",
         "enable": False,
-        "id": "glm",
-        "model": "glm-4-flash",
+        "id": "moonshot",
+        "model": "moonshot-v1-8k",
         "api_key": "",
-        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "base_url": "https://api.moonshot.cn/v1",
         "max_tokens": 4096,
         "temperature": 0.7,
     },
-    provider_display_name="智谱 GLM",
+    provider_display_name="Moonshot AI",
 )
-class GLMProvider(BaseLLMProvider):
-    """智谱 GLM LLM 提供商"""
+class MoonshotProvider(BaseLLMProvider):
+    """Moonshot AI LLM 提供商"""
 
     def __init__(self, provider_config: dict, provider_settings: dict) -> None:
         super().__init__(provider_config, provider_settings)
         self.api_key = provider_config.get("api_key", "")
-        self.base_url = provider_config.get("base_url", "https://open.bigmodel.cn/api/paas/v4")
+        self.base_url = provider_config.get("base_url", "https://api.moonshot.cn/v1")
         self.max_tokens = provider_config.get("max_tokens", 4096)
         self.temperature = provider_config.get("temperature", 0.7)
         self.timeout = provider_config.get("timeout", 120)
@@ -45,7 +45,7 @@ class GLMProvider(BaseLLMProvider):
         self._current_key_index = 0
 
     def _get_client(self) -> AsyncOpenAI:
-        """获取或创建 OpenAI 客户端"""
+        """获取或创建 Moonshot 客户端"""
         if self._client is None or self._client.is_closed:
             self._client = AsyncOpenAI(
                 api_key=self.api_key,
@@ -71,10 +71,10 @@ class GLMProvider(BaseLLMProvider):
     async def initialize(self) -> None:
         """初始化提供商"""
         if not self.api_key:
-            raise ValueError("GLM API Key 未配置")
+            raise ValueError("Moonshot API Key 未配置")
 
         self._client = self._get_client()
-        logger.info("[GLM] GLM 提供商已初始化")
+        logger.info("[Moonshot] Moonshot 提供商已初始化")
 
     async def get_models(self):
         """获取支持的模型列表"""
@@ -93,26 +93,20 @@ class GLMProvider(BaseLLMProvider):
         prompt: str | None = None,
         session_id: str | None = None,
         image_urls: list[str] | None = None,
-        func_tool: Any = None,
         contexts: list[dict] | None = None,
         system_prompt: str | None = None,
-        tool_calls_result: Any = None,
         model: str | None = None,
-        extra_user_content_parts: Any = None,
         **kwargs,
     ) -> LLMResponse:
         """文本对话
 
         Args:
             prompt: 提示词
-            session_id: 会话 ID (已废弃)
+            session_id: 会话 ID
             image_urls: 图片 URL 列表
-            func_tool: 工具集
             contexts: 上下文
             system_prompt: 系统提示词
-            tool_calls_result: 工具调用结果
             model: 模型名称
-            extra_user_content_parts: 额外的用户内容部分
             **kwargs: 其他参数
 
         Returns:
@@ -145,8 +139,7 @@ class GLMProvider(BaseLLMProvider):
             elif image_urls:
                 messages.append({"role": "user", "content": [{"type": "text", "text": "[图片]"}]})
 
-            client = self._get_client()
-            completion = await client.chat.completions.create(
+            completion = await self._client.chat.completions.create(
                 model=model or self.model_name,
                 messages=messages,
                 temperature=self.temperature,
@@ -181,7 +174,7 @@ class GLMProvider(BaseLLMProvider):
             )
 
         except Exception as e:
-            logger.error(f"[GLM] 文本聊天失败: {e}")
+            logger.error(f"[Moonshot] 文本聊天失败: {e}")
             return LLMResponse(
                 role="err",
                 completion_text="",
@@ -192,10 +185,8 @@ class GLMProvider(BaseLLMProvider):
         prompt: str | None = None,
         session_id: str | None = None,
         image_urls: list[str] | None = None,
-        func_tool: Any = None,
         contexts: list[dict] | None = None,
         system_prompt: str | None = None,
-        tool_calls_result: Any = None,
         model: str | None = None,
         **kwargs,
     ) -> AsyncGenerator[LLMResponse, None]:
@@ -203,14 +194,11 @@ class GLMProvider(BaseLLMProvider):
 
         Args:
             prompt: 提示词
-            session_id: 会话 ID (已废弃)
+            session_id: 会话 ID
             image_urls: 图片 URL 列表
-            func_tool: 工具集
             contexts: 上下文
             system_prompt: 系统提示词
-            tool_calls_result: 工具调用结果
             model: 模型名称
-            extra_user_content_parts: 额外的用户内容部分
             **kwargs: 其他参数
 
         Yields:
@@ -243,8 +231,7 @@ class GLMProvider(BaseLLMProvider):
             elif image_urls:
                 messages.append({"role": "user", "content": [{"type": "text", "text": "[图片]"}]})
 
-            client = self._get_client()
-            stream = await client.chat.completions.create(
+            stream = await self._client.chat.completions.create(
                 model=model or self.model_name,
                 messages=messages,
                 temperature=self.temperature,
@@ -285,13 +272,13 @@ class GLMProvider(BaseLLMProvider):
                 )
                 yield llm_response
             except Exception as e:
-                logger.error(f"[GLM] 流式文本聊天失败: {e}")
+                logger.error(f"[Moonshot] 流式文本聊天失败: {e}")
                 yield LLMResponse(
                     role="err",
                     completion_text="",
                 )
         except Exception as e:
-            logger.error(f"[GLM] 流式文本聊天失败: {e}")
+            logger.error(f"[Moonshot] 流式文本聊天失败: {e}")
             yield LLMResponse(
                 role="err",
                 completion_text="",
@@ -312,4 +299,4 @@ class GLMProvider(BaseLLMProvider):
         """关闭提供商"""
         if self._client and not self._client.is_closed:
             await self._client.close()
-            logger.info("[GLM] 提供商已关闭")
+            logger.info("[Moonshot] 提供商已关闭")

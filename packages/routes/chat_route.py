@@ -174,8 +174,8 @@ class ChatRoute(Route):
         Returns:
             LLM 响应文本
         """
-        from packages.llm.register import llm_provider_cls_map
-        from packages.llm.context_manager import LLMContextManager, ContextConfig, ContextCompressionStrategy
+        from packages.provider.register import llm_provider_cls_map
+        from packages.provider.context_manager import LLMContextManager, ContextConfig, ContextCompressionStrategy
 
         provider_type = provider_config.get("type", "unknown")
         logger.info(
@@ -242,8 +242,8 @@ class ChatRoute(Route):
         Yields:
             响应文本块
         """
-        from packages.llm.register import llm_provider_cls_map
-        from packages.llm.context_manager import LLMContextManager, ContextConfig, ContextCompressionStrategy
+        from packages.provider.register import llm_provider_cls_map
+        from packages.provider.context_manager import LLMContextManager, ContextConfig, ContextCompressionStrategy
 
         provider_type = provider_config.get("type", "unknown")
 

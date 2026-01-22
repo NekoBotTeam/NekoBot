@@ -10,7 +10,7 @@ from loguru import logger
 
 from .route import Route, Response, RouteContext
 from ..platform.register import get_all_platforms
-from ..llm.register import llm_provider_cls_map
+from ..provider.register import llm_provider_cls_map
 from ..platform.base import BasePlatform
 
 # 配置文件路径
