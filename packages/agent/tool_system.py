@@ -3,20 +3,17 @@
 支持 JSON Schema 验证的工具调用系统
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Callable, Awaitable, ParamSpec
 from enum import Enum
-import json
 import inspect
-from functools import wraps
 
 from ..types import T_Context
 
 
 # ============== 类型定义 ==============
 
-P = ParamSpec('P')
+P = ParamSpec("P")
 ToolHandlerType = Callable[P, Awaitable[Any]]
 
 
@@ -116,13 +113,13 @@ class FunctionTool(ToolSchema):
 
         for param_name, param in sig.parameters.items():
             # 跳过 self 和 context 参数
-            if param_name in ('self', 'cls', 'context'):
+            if param_name in ("self", "cls", "context"):
                 continue
 
             # 确定类型
             param_type = param.annotation
             if param_type == inspect.Parameter.empty:
-                param_type = 'string'
+                param_type = "string"
 
             # 转换为 JSON Schema 类型
             json_type = _python_type_to_json_type(param_type)

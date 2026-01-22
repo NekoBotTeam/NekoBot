@@ -3,17 +3,15 @@
 提供工具注册、执行监控、性能统计和权限管理功能
 """
 
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from typing import Dict, Any
+from datetime import datetime
 from loguru import logger
 from quart import request
 
 from .route import Route, Response, RouteContext
 from ..agent.tool_system import (
     ToolCategory,
-    ToolSchema,
     FunctionTool,
-    ToolSet,
     ToolExecutor,
     get_global_tool_set,
 )
@@ -293,7 +291,6 @@ class ToolRoute(Route):
             time_range = int(request.args.get("time_range", 24))
 
             # 从数据库获取执行记录
-            from ..core.database import db_manager
 
             # 简化处理：返回基础统计
             tools = self.tool_set.list_tools()

@@ -5,7 +5,6 @@
 
 import importlib
 import json
-import os
 from typing import Dict, Any, Optional, Type
 from loguru import logger
 from pathlib import Path
@@ -16,17 +15,17 @@ class DynamicRegisterManager:
     
     负责根据配置文件动态加载和注册LLM提供商和平台适配器。
     """
-    
+
     def __init__(self):
         """初始化动态注册管理器"""
         self.llm_providers: Dict[str, Type] = {}
         self.platform_adapters: Dict[str, Type] = {}
-        
+
         # 配置文件路径
         self.data_dir = Path("data")
         self.llm_providers_config_path = self.data_dir / "llm_providers.json"
         self.platforms_config_path = self.data_dir / "platforms_sources.json"
-        
+
         # 动态导入映射
         self.llm_provider_module_map = {
             "openai": "packages.provider.sources.openai_provider",
@@ -41,7 +40,7 @@ class DynamicRegisterManager:
             "lm_studio": "packages.provider.sources.lm_studio_provider",
             "openai_compatible": "packages.provider.sources.openai_compatible_provider",
         }
-        
+
         self.platform_adapter_module_map = {
             "aiocqhttp": "packages.platform.sources.aiocqhttp.aiocqhttp_platform",
             "discord": "packages.platform.sources.discord.discord_platform",
@@ -52,7 +51,7 @@ class DynamicRegisterManager:
             "slack": "packages.platform.sources.slack.slack_platform",
             "wecom": "packages.platform.sources.wecom.wecom_platform",
         }
-    
+
     def load_configs(self) -> tuple[Dict[str, Any], Dict[str, Any]]:
         """加载配置文件
         
@@ -64,15 +63,15 @@ class DynamicRegisterManager:
         if self.llm_providers_config_path.exists():
             with open(self.llm_providers_config_path, "r", encoding="utf-8") as f:
                 llm_providers_config = json.load(f)
-        
+
         # 加载平台适配器配置
         platforms_config = {}
         if self.platforms_config_path.exists():
             with open(self.platforms_config_path, "r", encoding="utf-8") as f:
                 platforms_config = json.load(f)
-        
+
         return llm_providers_config, platforms_config
-    
+
     def dynamic_register_llm_providers(self) -> Dict[str, Type]:
         """动态注册LLM提供商
 
@@ -121,7 +120,7 @@ class DynamicRegisterManager:
         logger.info(f"LLM提供商动态注册完成，共注册 {len(registered_providers)} 个提供商")
         self.llm_providers = registered_providers
         return registered_providers
-    
+
     def dynamic_register_platform_adapters(self) -> Dict[str, Type]:
         """动态注册平台适配器
         
@@ -129,33 +128,33 @@ class DynamicRegisterManager:
             Dict[str, Type]: 注册的平台适配器字典
         """
         logger.info("开始动态注册平台适配器...")
-        
+
         # 加载配置
         _, platforms_config = self.load_configs()
-        
+
         # 动态注册启用的平台适配器
         registered_adapters = {}
-        
+
         for adapter_id, adapter_config in platforms_config.items():
             if adapter_config.get("enable", False):
                 adapter_type = adapter_config.get("type", adapter_id)
-                
+
                 try:
                     # 动态导入模块
                     module_name = self.platform_adapter_module_map.get(adapter_type)
                     if not module_name:
                         logger.warning(f"未找到平台适配器 {adapter_type} 的模块映射，跳过注册")
                         continue
-                    
+
                     logger.debug(f"动态导入平台适配器模块: {module_name}")
                     module = importlib.import_module(module_name)
-                    
+
                     # 直接从模块中获取适配器类（假设类名是AdapterType+Platform）
                     class_name = adapter_type.capitalize() + "Platform"
                     if class_name not in module.__dict__:
                         # 尝试其他命名方式
                         class_name = adapter_type.replace("_", "").capitalize() + "Platform"
-                    
+
                     if class_name in module.__dict__:
                         adapter_cls = module.__dict__[class_name]
                         registered_adapters[adapter_type] = adapter_cls
@@ -170,22 +169,22 @@ class DynamicRegisterManager:
                                 logger.info(f"成功注册平台适配器: {adapter_type}，使用类: {name}")
                                 found = True
                                 break
-                        
+
                         if not found:
                             logger.warning(f"未找到平台适配器类: {adapter_type}")
-                        
+
                 except Exception as e:
                     logger.error(f"动态注册平台适配器 {adapter_type} 失败: {e}")
-        
+
         # 更新全局变量
         from packages.platform.register import platform_cls_map
         platform_cls_map.clear()
         platform_cls_map.update(registered_adapters)
-        
+
         logger.info(f"平台适配器动态注册完成，共注册 {len(registered_adapters)} 个适配器")
         self.platform_adapters = registered_adapters
         return registered_adapters
-    
+
     def get_llm_provider(self, provider_type: str) -> Optional[Type]:
         """获取指定类型的LLM提供商
         
@@ -196,7 +195,7 @@ class DynamicRegisterManager:
             Optional[Type]: LLM提供商类
         """
         return self.llm_providers.get(provider_type)
-    
+
     def get_platform_adapter(self, adapter_type: str) -> Optional[Type]:
         """获取指定类型的平台适配器
         
@@ -207,7 +206,7 @@ class DynamicRegisterManager:
             Optional[Type]: 平台适配器类
         """
         return self.platform_adapters.get(adapter_type)
-    
+
     def get_all_llm_providers(self) -> Dict[str, Type]:
         """获取所有注册的LLM提供商
         
@@ -215,7 +214,7 @@ class DynamicRegisterManager:
             Dict[str, Type]: 所有注册的LLM提供商
         """
         return self.llm_providers
-    
+
     async def dynamic_register_platform_adapters_async(self) -> Dict[str, Type]:
         """异步动态注册平台适配器
         
@@ -223,30 +222,30 @@ class DynamicRegisterManager:
             Dict[str, Type]: 注册的平台适配器字典
         """
         logger.info("开始异步动态注册平台适配器...")
-        
+
         # 加载配置
         _, platforms_config = self.load_configs()
-        
+
         # 动态注册启用的平台适配器
         registered_adapters = {}
-        
+
         for adapter_id, adapter_config in platforms_config.items():
             if adapter_config.get("enable", False):
                 adapter_type = adapter_config.get("type", adapter_id)
-                
+
                 try:
                     # 动态导入模块
                     module_name = self.platform_adapter_module_map.get(adapter_type)
                     if not module_name:
                         logger.warning(f"未找到平台适配器 {adapter_type} 的模块映射，跳过注册")
                         continue
-                    
+
                     logger.debug(f"动态导入平台适配器模块: {module_name}")
                     module = importlib.import_module(module_name)
-                    
+
                     # 直接从模块中获取适配器类
                     class_name = adapter_type.capitalize() + "Platform"
-                    
+
                     if class_name in module.__dict__:
                         adapter_cls = module.__dict__[class_name]
                         registered_adapters[adapter_type] = adapter_cls
@@ -261,21 +260,21 @@ class DynamicRegisterManager:
                                 logger.info(f"成功注册平台适配器: {adapter_type}，使用类: {name}")
                                 found = True
                                 break
-                        
+
                         if not found:
                             logger.warning(f"未找到平台适配器类: {adapter_type}")
-                            
+
                 except Exception as e:
                     logger.error(f"动态注册平台适配器 {adapter_type} 失败: {e}")
-        
+
         # 更新全局变量
         from packages.platform.register import platform_cls_map
         platform_cls_map.clear()
         platform_cls_map.update(registered_adapters)
-        
+
         # 保持向后兼容，同步更新属性
         self.platform_adapters = registered_adapters
-        
+
         logger.info(f"平台适配器异步动态注册完成，共注册 {len(registered_adapters)} 个适配器")
         return registered_adapters
 

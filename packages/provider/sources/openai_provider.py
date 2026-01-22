@@ -10,6 +10,7 @@ from loguru import logger
 from packages.provider.base import BaseLLMProvider
 from packages.provider.register import register_llm_provider, LLMProviderType
 from packages.provider.entities import LLMResponse, TokenUsage
+from packages.provider.message_builder import MessageBuilder
 from openai import AsyncOpenAI
 
 
@@ -119,31 +120,12 @@ class OpenAIProvider(BaseLLMProvider):
             LLMResponse 对象
         """
         try:
-            # 构建消息列表
-            messages = []
-
-            # 添加系统提示词
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-
-            # 添加上下文
-            if contexts:
-                messages.extend(contexts)
-
-            # 添加用户消息
-            if prompt:
-                user_message = {"role": "user", "content": prompt}
-                if image_urls:
-                    user_message["content"] = [
-                        {"type": "text", "text": prompt},
-                        *[
-                            {"type": "image_url", "image_url": {"url": url}}
-                            for url in image_urls
-                        ],
-                    ]
-                messages.append(user_message)
-            elif image_urls:
-                messages.append({"role": "user", "content": [{"type": "text", "text": "[图片]"}]})
+            messages = MessageBuilder.build_messages(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                contexts=contexts,
+                image_urls=image_urls,
+            )
 
             completion = await self._client.chat.completions.create(
                 model=model or self.model_name,
@@ -162,7 +144,9 @@ class OpenAIProvider(BaseLLMProvider):
             if choice.message.content:
                 completion_text = str(choice.message.content).strip()
                 # 移除思考标签（如果有的话）
-                completion_text = completion_text.replace("<thinking>", "").replace("</thinking>", "")
+                completion_text = completion_text.replace("<thinking>", "").replace(
+                    "</thinking>", ""
+                )
             else:
                 completion_text = ""
 
@@ -218,31 +202,12 @@ class OpenAIProvider(BaseLLMProvider):
             LLMResponse 对象
         """
         try:
-            # 构建消息列表
-            messages = []
-
-            # 添加系统提示词
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-
-            # 添加上下文
-            if contexts:
-                messages.extend(contexts)
-
-            # 添加用户消息
-            if prompt:
-                user_message = {"role": "user", "content": prompt}
-                if image_urls:
-                    user_message["content"] = [
-                        {"type": "text", "text": prompt},
-                        *[
-                            {"type": "image_url", "image_url": {"url": url}}
-                            for url in image_urls
-                        ],
-                    ]
-                messages.append(user_message)
-            elif image_urls:
-                messages.append({"role": "user", "content": [{"type": "text", "text": "[图片]"}]})
+            messages = MessageBuilder.build_messages(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                contexts=contexts,
+                image_urls=image_urls,
+            )
 
             stream = await self._client.chat.completions.create(
                 model=model or self.model_name,
@@ -297,16 +262,20 @@ class OpenAIProvider(BaseLLMProvider):
                 completion_text="",
             )
 
-    async def test(self, timeout: float = 45.0):
-        """测试提供商连接"""
+    async def test(self, timeout: float = 45.0, test_prompt: str | None = None) -> None:
+        """测试提供商连接
+
+        Args:
+            timeout: 超时时间（秒）
+            test_prompt: 测试提示词，如果为 None 则使用默认提示词
+
+        Raises:
+            Exception: 如果测试连接失败
+        """
         try:
-            import asyncio
-            await asyncio.wait_for(
-                self.text_chat(prompt="REPLY `PONG` ONLY"),
-                timeout=timeout,
-            )
+            await super().test(timeout=timeout, test_prompt=test_prompt)
         except Exception as e:
-            raise Exception(f"测试连接失败: {e}")
+            raise Exception(f"[OpenAI] 测试连接失败: {e}")
 
     async def close(self) -> None:
         """关闭提供商"""

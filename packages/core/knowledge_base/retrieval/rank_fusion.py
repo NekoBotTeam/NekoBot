@@ -6,7 +6,6 @@
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from loguru import logger
-import math
 
 
 
@@ -178,7 +177,7 @@ class RankFusion:
                 doc_ids.add(result.document_id)
 
         result_map: Dict[str, RetrievalResult] = {}
-        wins: Dict[str, int] = {doc_id: 0 for doc_id in doc_ids}
+        wins: Dict[str, int] = dict.fromkeys(doc_ids, 0)
 
         for results in results_list:
             for i in range(len(results)):

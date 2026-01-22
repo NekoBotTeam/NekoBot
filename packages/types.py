@@ -3,21 +3,21 @@
 提供统一的类型系统，支持类型检查和 IDE 补全
 """
 
-from typing import TypeVar, Generic, ParamSpec, AsyncIterator, AsyncGenerator
+from typing import TypeVar, ParamSpec, AsyncIterator, AsyncGenerator, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import json
+from pydantic import BaseModel, field_validator
 
 
 # ============== 基础类型变量 ==============
 
-T = TypeVar('T')  # 通用类型
-T_Context = TypeVar('T_Context', bound='BaseContext')  # 上下文类型
-T_Platform = TypeVar('T_Platform', bound='BasePlatform')  # 平台类型
-T_Response = TypeVar('T_Response', covariant=True)  # 响应类型（协变）
+T = TypeVar("T")  # 通用类型
+T_Context = TypeVar("T_Context")  # 上下文类型
+T_Platform = TypeVar("T_Platform")  # 平台类型
+T_Response = TypeVar("T_Response", covariant=True)  # 响应类型（协变）
 
-P = ParamSpec('P')  # 参数规格
+P = ParamSpec("P")  # 参数规格
 
 
 # ============== 消息类型 ==============
@@ -33,6 +33,8 @@ class MessageType(str, Enum):
     FILE = "file"
     LOCATION = "location"
     JSON = "json"
+    THINK = "think"
+    AUDIO_URL = "audio_url"
     UNKNOWN = "unknown"
 
 
@@ -83,6 +85,22 @@ class MessageChain(list):
         return cls([MessageSegment(MessageType.IMAGE, {"url": url})])
 
     @classmethod
+    def think(cls, think: str, encrypted: bool = False) -> "MessageChain":
+        """创建思考内容消息"""
+        return cls([MessageSegment(
+            MessageType.THINK,
+            {"think": think, "encrypted": encrypted}
+        )])
+
+    @classmethod
+    def audio_url(cls, url: str, audio_id: str | None = None) -> "MessageChain":
+        """创建音频 URL 消息"""
+        return cls([MessageSegment(
+            MessageType.AUDIO_URL,
+            {"url": url, "id": audio_id}
+        )])
+
+    @classmethod
     def from_dict(cls, data: dict | list) -> "MessageChain":
         """从字典创建消息链"""
         if isinstance(data, dict):
@@ -110,8 +128,39 @@ class MessageChain(list):
         """获取纯文本（同 text_content）"""
         return self.text_content
 
+    @property
+    def think_content(self) -> str:
+        """提取思考内容"""
+        thinks = []
+        for seg in self:
+            if seg.type == MessageType.THINK and not seg.data.get("encrypted"):
+                thinks.append(seg.data.get("think", ""))
+        return "".join(thinks)
+
     def __str__(self) -> str:
         return "".join(str(seg) for seg in self)
+
+
+# ============== 工具调用类型 ==============
+
+@dataclass
+class ToolCall:
+    """工具调用"""
+    id: str
+    function_name: str
+    arguments: str
+    type: str = "function"
+
+    def to_dict(self) -> dict[str, Any]:
+        """转换为字典"""
+        return {
+            "id": self.id,
+            "type": self.type,
+            "function": {
+                "name": self.function_name,
+                "arguments": self.arguments,
+            }
+        }
 
 
 # ============== 事件类型 ==============
@@ -203,7 +252,7 @@ class AgentResponse:
     表示 Agent 的响应结果
     """
     content: str
-    tool_calls: list[dict] | None = None
+    tool_calls: list[ToolCall] | None = None
     metadata: dict | None = None
     finished: bool = True  # 是否完成（用于流式响应）
     usage: dict | None = None  # Token 使用情况
@@ -212,7 +261,7 @@ class AgentResponse:
         """转换为字典"""
         return {
             "content": self.content,
-            "tool_calls": self.tool_calls,
+            "tool_calls": [tc.to_dict() for tc in self.tool_calls] if self.tool_calls else None,
             "finished": self.finished,
             "usage": self.usage,
             **(self.metadata or {})
@@ -267,6 +316,26 @@ class Context(BaseContext):
         }
 
 
+# ============== 服务配置类型 ==============
+
+class LLMServicesConfig(BaseModel):
+    """LLM 服务配置
+
+    管理会话级别的 LLM 服务状态
+    """
+    llm_enabled: bool = True
+    tts_enabled: bool = True
+    session_enabled: bool = True
+
+    @field_validator("llm_enabled", "tts_enabled", "session_enabled", mode="after")
+    @classmethod
+    def validate_not_none(cls, v):
+        """确保布尔值不为 None"""
+        if v is None:
+            return True
+        return v
+
+
 # ============== 类型导出 ==============
 
 __all__ = [
@@ -280,6 +349,8 @@ __all__ = [
     "MessageType",
     "MessageSegment",
     "MessageChain",
+    # 工具调用
+    "ToolCall",
     # 事件类型
     "MessageEvent",
     "CommandEvent",
@@ -291,4 +362,6 @@ __all__ = [
     # 上下文类型
     "BaseContext",
     "Context",
+    # 服务配置
+    "LLMServicesConfig",
 ]

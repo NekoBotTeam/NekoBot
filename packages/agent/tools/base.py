@@ -4,14 +4,14 @@
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Dict, Any, Optional
 
 
 class ToolCategory(Enum):
     """工具类别枚举"""
-    
+
     SYSTEM = "system"  # 系统工具
     SEARCH = "search"  # 搜索工具
     FILE = "file"  # 文件操作工具
@@ -68,19 +68,19 @@ class ToolCall:
     """
     tool_name: str
     """工具名称"""
-    
+
     parameters: Dict[str, Any]
     """调用参数"""
-    
+
     result: str
     """执行结果"""
-    
+
     success: bool = True
     """是否成功"""
-    
+
     error: Optional[str] = None
     """错误信息"""
-    
+
     def __repr__(self) -> str:
         status = "成功" if self.success else "失败"
         return f"ToolCall(tool={self.tool_name}, status={status}, result={self.result})"

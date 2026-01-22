@@ -1,6 +1,37 @@
 """Pipeline Stage 基类
 
-定义 Pipeline 的某个阶段
+定义 Pipeline 的某个阶段，支持洋葱模型
+
+洋葱模型 (Onion Model):
+=====================
+洋葱模型是一种中间件模式，允许在阶段执行前后插入处理逻辑。
+
+执行流程:
+    Stage1.pre -> Stage2.pre -> Stage3.pre -> Stage3.post -> Stage2.post -> Stage1.post
+
+实现方式:
+    使用 AsyncGenerator 实现，通过 yield 分割前置和后置处理:
+
+    async def process(self, event: dict, ctx: PipelineContext) -> AsyncGenerator[None, None]:
+        # === 前置处理 ===
+        await self._do_something_before(event, ctx)
+
+        # yield 暂停点：交出控制权给下一个阶段
+        yield
+
+        # === 后置处理 ===
+        await self._do_something_after(event, ctx)
+
+简化模式（非洋葱）:
+    如果不需要洋葱模型，可以返回 None 或普通协程:
+
+    async def process(self, event: dict, ctx: PipelineContext) -> None:
+        # 处理逻辑
+        pass
+
+使用场景:
+    - 前置处理：数据验证、权限检查、日志记录、性能监控开始
+    - 后置处理：资源清理、统计上报、性能监控结束、错误处理
 """
 
 import abc
@@ -15,7 +46,37 @@ _stage_registry: Dict[str, Type["Stage"]] = {}
 
 
 class Stage(abc.ABC):
-    """描述一个 Pipeline 的某个阶段"""
+    """描述一个 Pipeline 的某个阶段
+
+    支持洋葱模型和简化模式两种实现方式。
+
+    洋葱模型示例:
+        @register_stage
+        class MyStage(Stage):
+            async def initialize(self, ctx: PipelineContext) -> None:
+                pass
+
+            async def process(self, event: dict, ctx: PipelineContext) -> AsyncGenerator[None, None]:
+                # 前置处理
+                event["start_time"] = time.time()
+
+                # 暂停并交给下一个阶段
+                yield
+
+                # 后置处理
+                duration = time.time() - event["start_time"]
+                logger.info(f"处理耗时: {duration}s")
+
+    简化模式示例:
+        @register_stage
+        class SimpleStage(Stage):
+            async def initialize(self, ctx: PipelineContext) -> None:
+                pass
+
+            async def process(self, event: dict, ctx: PipelineContext) -> None:
+                # 简单处理，不需要后置逻辑
+                logger.info("处理事件")
+    """
 
     @abc.abstractmethod
     async def initialize(self, ctx: PipelineContext) -> None:
@@ -23,6 +84,9 @@ class Stage(abc.ABC):
 
         Args:
             ctx: Pipeline 上下文
+
+        Note:
+            此方法在 Pipeline 首次执行时调用，用于初始化阶段状态
         """
         pass
 
@@ -37,7 +101,11 @@ class Stage(abc.ABC):
             ctx: Pipeline 上下文
 
         Returns:
-            None 或异步生成器（用于洋葱模型）
+            - None: 简化模式，直接进入下一个阶段
+            - AsyncGenerator: 洋葱模型，支持前置和后置处理
+
+        Note:
+            返回 AsyncGenerator 时，yield 之前是前置处理，yield 之后是后置处理
         """
         pass
 

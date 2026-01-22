@@ -10,7 +10,7 @@ import re
 from typing import Dict, Any
 from loguru import logger
 
-from .config import load_config
+from ..config import load_config
 from .plugin_manager import plugin_manager
 from ..platform import PlatformManager
 from . import __version__ as NEKOBOT_VERSION
@@ -26,6 +26,7 @@ from .pipeline import (
     ResultDecorateStage,
     RespondStage,
 )
+from .utils import get_nekobot_dist_path
 
 # 加载全局配置
 CONFIG = load_config()
@@ -36,11 +37,8 @@ platform_manager = PlatformManager()
 # 创建事件队列
 event_queue = asyncio.Queue()
 
-# 获取项目根目录
-PROJECT_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(__file__))
-)
-WEBUI_VERSION_FILE = os.path.join(PROJECT_ROOT, "data", "dist", "version")
+# 使用统一的路径管理
+WEBUI_VERSION_FILE = os.path.join(get_nekobot_dist_path(), "version")
 
 
 def get_webui_version() -> str:
@@ -141,6 +139,7 @@ async def start_server() -> None:
     if CONFIG.get("pipeline_stages", {}).get("rag_enabled", False):
         try:
             from .pipeline.rag_enhance_stage import RAGEnhanceStage
+
             stages.append(RAGEnhanceStage())
             logger.info("RAG 增强阶段已启用")
         except Exception as e:
@@ -153,22 +152,32 @@ async def start_server() -> None:
     if CONFIG.get("pipeline_stages", {}).get("session_summary_enabled", False):
         try:
             from .pipeline.session_summary_stage import SessionSummaryStage
+
             stages.append(SessionSummaryStage())
             logger.info("会话摘要阶段已启用")
         except Exception as e:
             logger.warning(f"会话摘要阶段加载失败: {e}，已跳过")
 
     # 最后阶段
-    stages.extend([
-        ResultDecorateStage(),
-        RespondStage(),
-    ])
+    stages.extend(
+        [
+            ResultDecorateStage(),
+            RespondStage(),
+        ]
+    )
 
     pipeline_scheduler = PipelineScheduler(stages)
     logger.info(f"Pipeline 调度器已初始化（共 {len(stages)} 个阶段）")
 
-    # 8. 启动事件处理循环
-    asyncio.create_task(handle_events(pipeline_scheduler))
+    # 8. 启动事件处理循环（使用任务包装器）
+    from .task_wrapper import get_task_wrapper
+
+    task_wrapper = get_task_wrapper()
+    await task_wrapper.wrap_task(
+        handle_events(pipeline_scheduler),
+        name="event_handler",
+        metadata={"description": "事件处理循环"},
+    )
     logger.info("事件处理循环已启动")
 
     logger.info("NekoBot 服务器已启动")

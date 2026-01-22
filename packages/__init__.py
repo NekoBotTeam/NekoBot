@@ -47,6 +47,7 @@ from .types import (
 # ============== 核心实例 ==============
 # Logger 是 loguru 库的直接导出
 from loguru import logger as _logger
+
 logger = _logger
 
 # EventBus 从 core 模块导出
@@ -110,7 +111,7 @@ from .conversation import (
 )
 
 # ============== Pipeline 相关 ==============
-from .pipeline.scheduler_new import (
+from .pipeline.scheduler import (
     BaseStage,
     SimpleStage,
     PipelineContext,

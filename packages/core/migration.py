@@ -3,7 +3,7 @@
 参考 AstrBot 的数据库迁移实现
 """
 
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional
 from loguru import logger
 from pathlib import Path
 

@@ -30,7 +30,7 @@ class LongTermMemoryRoute(Route):
             ("/api/memories/tags", "GET", self.list_all_tags),
             ("/api/memories/tags/<tag_name>", "GET", self.get_memories_by_tag),
         ]
-        
+
         # 初始化数据库表
         self._init_database()
 
@@ -40,14 +40,14 @@ class LongTermMemoryRoute(Route):
             # 检查表是否已存在
             conn = db_manager._get_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT name FROM sqlite_master WHERE type='table' AND name='long_term_memories'
             """)
             table_exists = cursor.fetchone() is not None
-            
+
             conn.close()
-            
+
             if not table_exists:
                 self._create_tables()
                 logger.info("长期记忆数据库表初始化完成")
@@ -714,7 +714,7 @@ class LongTermMemoryRoute(Route):
             username = "unknown"
             try:
                 from quart import g
-                if hasattr(g, 'user') and g.user:
+                if hasattr(g, "user") and g.user:
                     username = g.user.username
             except Exception:
                 pass

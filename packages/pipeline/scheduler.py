@@ -6,8 +6,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
-from enum import Enum
+from typing import Any
 from loguru import logger
 
 from ..types import MessageEvent
@@ -150,7 +149,7 @@ class PipelineScheduler:
     def _get_stage_priority(self, stage_cls: type[BaseStage]) -> int:
         """获取阶段优先级"""
         # 尝试从类属性获取优先级
-        if hasattr(stage_cls, 'priority'):
+        if hasattr(stage_cls, "priority"):
             return stage_cls.priority
 
         # 从 StagePriority 枚举获取
@@ -197,7 +196,7 @@ class PipelineScheduler:
             try:
                 coroutine = stage.process(event)
 
-                if hasattr(coroutine, '__aiter__'):
+                if hasattr(coroutine, "__aiter__"):
                     # 异步生成器 - 洋葱模型
                     async for _ in coroutine:
                         # yield 点 - 执行后续阶段

@@ -3,7 +3,7 @@
 实现洋葱模型，支持前置/后置处理
 """
 
-from .scheduler_new import (
+from .scheduler import (
     BaseStage,
     SimpleStage,
     PipelineContext,

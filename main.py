@@ -14,6 +14,9 @@ import asyncio
 import argparse
 import getpass
 
+# 导入统一的路径管理
+from packages.core.utils import ensure_directories
+
 logger.remove()
 logger.add(
     sys.stdout,
@@ -89,8 +92,32 @@ NekoBot - 一个支持多聊天平台大模型的聊天机器人框架
     return 0
 
 
+async def check_env():
+    """检查并初始化环境
+    
+    参考 AstrBot 的 check_env() 实现
+    """
+    import mimetypes
+    
+    # 检查 Python 版本
+    if not (sys.version_info.major == 3 and sys.version_info.minor >= 10):
+        logger.error("请使用 Python3.10+ 运行本项目。")
+        sys.exit(1)
+    
+    # 确保必要的目录存在
+    ensure_directories()
+    
+    # 针对问题 #181 的临时解决方案（参考 AstrBot）
+    mimetypes.add_type("text/javascript", ".js")
+    mimetypes.add_type("text/javascript", ".mjs")
+    mimetypes.add_type("application/json", ".json")
+
+
 async def main():
     """主函数：启动 NekoBot 服务器或执行命令行操作"""
+    # 检查环境
+    await check_env()
+    
     # 解析命令行参数
     parser = argparse.ArgumentParser(
         description="NekoBot 命令行工具",

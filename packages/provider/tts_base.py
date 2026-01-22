@@ -4,7 +4,6 @@
 """
 
 import abc
-from typing import Optional
 
 
 class TTSProvider(abc.ABC):

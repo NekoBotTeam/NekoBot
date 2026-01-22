@@ -335,7 +335,6 @@ class PluginRoute(Route):
     async def get_marketplace_list(self) -> Dict[str, Any]:
         """获取在线插件商店列表（示例实现）"""
         try:
-            from quart import request
 
             # 这里可以调用远程 API 获取插件列表
             # 目前返回示例数据
@@ -402,7 +401,7 @@ class PluginRoute(Route):
                 return Response().error("插件未提供 README 文件").to_dict()
 
             # 读取 README 内容
-            with open(readme_path, 'r', encoding='utf-8') as f:
+            with open(readme_path, "r", encoding="utf-8") as f:
                 readme_content = f.read()
 
             return Response().ok(data={

@@ -297,16 +297,20 @@ class GLMProvider(BaseLLMProvider):
                 completion_text="",
             )
 
-    async def test(self, timeout: float = 45.0):
-        """测试提供商连接"""
+    async def test(self, timeout: float = 45.0, test_prompt: str | None = None) -> None:
+        """测试提供商连接
+
+        Args:
+            timeout: 超时时间（秒）
+            test_prompt: 测试提示词，如果为 None 则使用默认提示词
+
+        Raises:
+            Exception: 如果测试连接失败
+        """
         try:
-            import asyncio
-            await asyncio.wait_for(
-                self.text_chat(prompt="REPLY `PONG` ONLY"),
-                timeout=timeout,
-            )
+            await super().test(timeout=timeout, test_prompt=test_prompt)
         except Exception as e:
-            raise Exception(f"测试连接失败: {e}")
+            raise Exception(f"[GLM] 测试连接失败: {e}")
 
     async def close(self) -> None:
         """关闭提供商"""

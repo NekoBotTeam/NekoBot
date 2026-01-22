@@ -4,13 +4,14 @@
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable, Optional
 from pathlib import Path
 from enum import Enum
 import json
 import asyncio
 from datetime import datetime
 from loguru import logger
+from .validator import ConfigValidator, ConfigValidationError, get_validator
 
 
 # ============== 配置变更类型 ==============
@@ -47,20 +48,29 @@ ConfigWatcher = Callable[[ConfigChangeEvent], Awaitable[None]]
 class ConfigManager:
     """配置管理器
 
-    支持配置变更监听和持久化
+    支持配置变更监听、持久化和 Schema 验证
     """
 
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, enable_validation: bool = True):
         """初始化配置管理器
 
         Args:
             config_path: 配置文件路径
+            enable_validation: 是否启用配置验证
         """
         self.config_path = Path(config_path)
         self._config: dict[str, Any] = {}
         self._watchers: list[ConfigWatcher] = []
         self._lock = asyncio.Lock()
         self._loaded = False
+
+        # 配置验证
+        self._enable_validation = enable_validation
+        self._validator: Optional[ConfigValidator] = None
+        self._schema_name: Optional[str] = None
+
+        if enable_validation:
+            self._validator = get_validator()
 
     async def load(self) -> None:
         """加载配置"""
@@ -73,7 +83,7 @@ class ConfigManager:
             try:
                 content = await asyncio.to_thread(
                     self.config_path.read_text,
-                    encoding='utf-8'
+                    encoding="utf-8"
                 )
                 self._config = json.loads(content)
                 logger.info(f"Loaded config from {self.config_path}")
@@ -98,7 +108,7 @@ class ConfigManager:
             await asyncio.to_thread(
                 self.config_path.write_text,
                 content,
-                encoding='utf-8'
+                encoding="utf-8"
             )
             logger.debug(f"Saved config to {self.config_path}")
 
@@ -114,7 +124,7 @@ class ConfigManager:
         Returns:
             配置值
         """
-        keys = key.split('.')
+        keys = key.split(".")
         value = self._config
 
         for k in keys:
@@ -143,7 +153,7 @@ class ConfigManager:
         async with self._lock:
             old_value = self.get(key)
 
-            keys = key.split('.')
+            keys = key.split(".")
             config = self._config
 
             # 导航到父级
@@ -190,7 +200,7 @@ class ConfigManager:
             是否删除成功
         """
         async with self._lock:
-            keys = key.split('.')
+            keys = key.split(".")
             config = self._config
 
             # 导航到父级
@@ -251,6 +261,71 @@ class ConfigManager:
             except Exception as e:
                 logger.error(f"Config watcher error: {e}")
 
+    # ============== 配置验证 ==============
+
+    def set_schema(self, schema_name: str, schema: Optional[dict] = None) -> None:
+        """设置配置验证 Schema
+
+        Args:
+            schema_name: Schema 名称
+            schema: Schema 字典，如果为 None 则从已注册的 Schema 中查找
+        """
+        if not self._validator:
+            logger.warning("配置验证未启用，无法设置 Schema")
+            return
+
+        self._schema_name = schema_name
+
+        if schema is not None:
+            self._validator.register_schema(schema_name, schema)
+
+        logger.info(f"已设置配置 Schema: {schema_name}")
+
+    def set_schema_from_file(self, schema_name: str, schema_path: str) -> None:
+        """从文件设置配置验证 Schema
+
+        Args:
+            schema_name: Schema 名称
+            schema_path: Schema 文件路径
+        """
+        if not self._validator:
+            logger.warning("配置验证未启用，无法设置 Schema")
+            return
+
+        self._validator.register_schema_from_file(schema_name, schema_path)
+        self._schema_name = schema_name
+
+    def validate_config(self) -> bool:
+        """验证当前配置
+
+        Returns:
+            是否验证通过
+        """
+        if not self._validator or not self._schema_name:
+            return True
+
+        try:
+            self._validator.validate(self._config, self._schema_name)
+            logger.info("配置验证通过")
+            return True
+        except ConfigValidationError as e:
+            logger.error(f"配置验证失败: {e}")
+            if e.errors:
+                for error in e.errors:
+                    logger.error(f"  - {error}")
+            return False
+
+    def enable_validation(self, enable: bool = True) -> None:
+        """启用或禁用配置验证
+
+        Args:
+            enable: 是否启用
+        """
+        self._enable_validation = enable
+        if enable and self._validator is None:
+            self._validator = get_validator()
+        logger.info(f"配置验证已{'启用' if enable else '禁用'}")
+
     @property
     def config(self) -> dict[str, Any]:
         """获取完整配置（只读副本）"""
@@ -293,6 +368,9 @@ __all__ = [
     "ConfigChangeEvent",
     "ConfigWatcher",
     "ConfigManager",
+    "ConfigValidator",
+    "ConfigValidationError",
     "get_config_manager",
+    "get_validator",
     "config",
 ]

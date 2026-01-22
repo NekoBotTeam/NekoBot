@@ -1192,7 +1192,7 @@ class DatabaseManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 # 构建更新语句
                 updates = []
                 params = []
@@ -1204,7 +1204,7 @@ class DatabaseManager:
                     params.append(description)
                 updates.append("updated_at = CURRENT_TIMESTAMP")
                 params.append(tool_name)
-                
+
                 cursor.execute(
                     f"UPDATE tool_prompts SET {', '.join(updates)} WHERE tool_name = ?",
                     params
@@ -1332,7 +1332,7 @@ class DatabaseManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 # 构建更新语句
                 updates = []
                 params = []
@@ -1344,7 +1344,7 @@ class DatabaseManager:
                     params.append(description)
                 updates.append("updated_at = CURRENT_TIMESTAMP")
                 params.append(name)
-                
+
                 cursor.execute(
                     f"UPDATE system_prompts SET {', '.join(updates)} WHERE name = ?",
                     params
@@ -1475,7 +1475,7 @@ class DatabaseManager:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                
+
                 # 构建更新语句
                 updates = []
                 params = []
@@ -1490,7 +1490,7 @@ class DatabaseManager:
                     params.append(1 if enabled else 0)
                 updates.append("updated_at = CURRENT_TIMESTAMP")
                 params.append(name)
-                
+
                 cursor.execute(
                     f"UPDATE personalities SET {', '.join(updates)} WHERE name = ?",
                     params

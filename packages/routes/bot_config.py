@@ -9,11 +9,13 @@ from typing import Dict, Any
 from loguru import logger
 
 from .route import Route, Response, RouteContext
-from ..core.config import load_config
+from ..config import load_config
 from ..core.version import get_version_info
 
 CONFIG_PATH = Path(__file__).parent.parent.parent / "data" / "cmd_config.json"
-PLATFORMS_SOURCES_PATH = Path(__file__).parent.parent.parent / "data" / "platforms_sources.json"
+PLATFORMS_SOURCES_PATH = (
+    Path(__file__).parent.parent.parent / "data" / "platforms_sources.json"
+)
 
 
 class BotConfigRoute(Route):
@@ -52,7 +54,14 @@ class BotConfigRoute(Route):
 
             current_config = load_config()
 
-            base_allowed_keys = ["command_prefix", "server", "jwt", "webui_enabled", "demo", "llm_reply_mode"]
+            base_allowed_keys = [
+                "command_prefix",
+                "server",
+                "jwt",
+                "webui_enabled",
+                "demo",
+                "llm_reply_mode",
+            ]
             platforms = config.get("platforms")
 
             if platforms is not None and isinstance(platforms, dict):
@@ -90,6 +99,7 @@ class BotConfigRoute(Route):
             git_branch = data.get("git_branch")
 
             from ..core.version import write_version_file
+
             write_version_file(version, build_time, git_commit, git_branch)
 
             return Response().ok(message="版本信息更新成功").to_dict()

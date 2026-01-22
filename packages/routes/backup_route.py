@@ -7,10 +7,10 @@ import json
 import shutil
 import sqlite3
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 from loguru import logger
-from quart import request, send_file
+from quart import send_file
 
 from .route import Route, Response, RouteContext
 
@@ -98,7 +98,7 @@ class BackupRoute(Route):
 
     def _format_size(self, size: int) -> str:
         """格式化文件大小"""
-        for unit in ['B', 'KB', 'MB', 'GB']:
+        for unit in ["B", "KB", "MB", "GB"]:
             if size < 1024:
                 return f"{size:.2f} {unit}"
             size /= 1024
@@ -112,7 +112,7 @@ class BackupRoute(Route):
                 # 使用 SQLite 的备份 API
                 source_conn = sqlite3.connect(str(DATABASE_PATH))
                 backup_conn = sqlite3.connect(str(db_backup_path))
-                
+
                 try:
                     source_conn.backup(backup_conn)
                     return True
@@ -140,7 +140,7 @@ class BackupRoute(Route):
             # 恢复数据库
             source_conn = sqlite3.connect(str(db_backup_path))
             restore_conn = sqlite3.connect(str(DATABASE_PATH))
-            
+
             try:
                 source_conn.backup(restore_conn)
                 return True
@@ -160,7 +160,7 @@ class BackupRoute(Route):
         """列出所有备份"""
         try:
             backups = []
-            
+
             for backup_dir in sorted(self.backup_dir.iterdir(), reverse=True):
                 if not backup_dir.is_dir():
                     continue
@@ -328,7 +328,7 @@ class BackupRoute(Route):
             for filename in BACKUP_FILES:
                 if filename == "data.db":
                     continue  # 数据库已恢复
-                
+
                 src = backup_path / filename
                 dst = CONFIG_DIR / filename
                 if src.exists():
@@ -352,19 +352,19 @@ class BackupRoute(Route):
             from io import BytesIO
 
             zip_buffer = BytesIO()
-            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
                 for item in backup_path.rglob("*"):
                     if item.is_file():
                         arcname = item.relative_to(backup_path)
                         zipf.write(item, arcname)
 
             zip_buffer.seek(0)
-            
+
             return await send_file(
                 zip_buffer,
                 as_attachment=True,
                 download_name=f"{backup_id}.zip",
-                mimetype='application/zip'
+                mimetype="application/zip"
             )
         except Exception as e:
             logger.error(f"下载备份失败: {e}")
@@ -402,7 +402,7 @@ class BackupRoute(Route):
                 return Response().error("缺少请求数据").to_dict()
 
             settings_path = self.backup_dir / "settings.json"
-            
+
             # 读取现有设置
             default_settings = {
                 "auto_backup_enabled": False,

@@ -160,6 +160,7 @@ class ConversationManager:
         self._sessions: dict[str, Session] = {}
         self._conversations: dict[str, Conversation] = {}
         self._on_session_deleted_callbacks: list[SessionDeletedCallback] = []
+        self._session_services: dict[str, dict] = {}
 
         # 存储路径
         if storage_path is None:
@@ -169,17 +170,157 @@ class ConversationManager:
 
         self._sessions_file = self.storage_path / "sessions.json"
         self._conversations_dir = self.storage_path / "conversations"
-        self._conversations_dir.mkdir(exist_ok=True)
+        self._session_services_dir = self.storage_path / "session_services"
+        self._session_services_dir.mkdir(exist_ok=True)
 
     async def load(self) -> None:
         """加载会话和对话数据"""
         await self._load_sessions()
         await self._load_conversations()
+        await self._load_session_services()
 
     async def save(self) -> None:
         """保存会话和对话数据"""
         await self._save_sessions()
         await self._save_conversations()
+        await self._save_session_services()
+
+    # ============== 会话服务管理 ==============
+
+    async def _load_session_services(self) -> None:
+        """加载会话服务配置"""
+        for file_path in self._session_services_dir.glob("*.json"):
+            try:
+                content = await self._read_file_async(file_path)
+                data = json.loads(content)
+
+                session_id = data.get("session_id")
+                if session_id:
+                    self._session_services[session_id] = data
+            except Exception as e:
+                logger.error(f"Failed to load session services {file_path}: {e}")
+
+        logger.info(f"Loaded {len(self._session_services)} session service configs")
+
+    async def _save_session_services(self) -> None:
+        """保存会话服务配置"""
+        for session_id, services_config in self._session_services.items():
+            try:
+                content = json.dumps(services_config, indent=2, ensure_ascii=False)
+                file_path = self._session_services_dir / f"{session_id}.json"
+                await self._write_file_async(file_path, content)
+            except Exception as e:
+                logger.error(f"Failed to save session services {session_id}: {e}")
+
+    # ============== 会话服务管理方法 ==============
+
+    async def get_session_services(self, session_id: str) -> dict:
+        """获取会话服务配置
+
+        Args:
+            session_id: 会话 ID
+
+        Returns:
+            会话服务配置
+        """
+        if session_id not in self._session_services:
+            # 如果没有配置，返回默认配置
+            return {
+                "llm_enabled": True,
+                "tts_enabled": True,
+                "session_enabled": True,
+            }
+
+        return self._session_services[session_id]
+
+    async def set_llm_status(self, session_id: str, enabled: bool) -> None:
+        """设置会话的 LLM 状态
+
+        Args:
+            session_id: 会话 ID
+            enabled: True 表示启用，False 表示禁用
+        """
+        services = await self.get_session_services(session_id)
+        services["llm_enabled"] = enabled
+
+        self._session_services[session_id] = services
+        await self._save_session_services()
+
+        logger.info(
+            f"会话 {session_id} 的 LLM 状态已更新为: {'启用' if enabled else '禁用'}"
+        )
+
+    async def set_tts_status(self, session_id: str, enabled: bool) -> None:
+        """设置会话的 TTS 状态
+
+        Args:
+            session_id: 会话 ID
+            enabled: True 表示启用，False 表示禁用
+        """
+        services = await self.get_session_services(session_id)
+        services["tts_enabled"] = enabled
+
+        self._session_services[session_id] = services
+        await self._save_session_services()
+
+        logger.info(
+            f"会话 {session_id} 的 TTS 状态已更新为: {'启用' if enabled else '禁用'}"
+        )
+
+    async def is_llm_enabled(self, session_id: str) -> bool:
+        """检查会话的 LLM 是否启用
+
+        Args:
+            session_id: 会话 ID
+
+        Returns:
+            True 表示启用，False 表示禁用
+        """
+        services = await self.get_session_services(session_id)
+        return services.get("llm_enabled", True)
+
+    async def is_tts_enabled(self, session_id: str) -> bool:
+        """检查会话的 TTS 是否启用
+
+        Args:
+            session_id: 会话 ID
+
+        Returns:
+            True 表示启用，False 表示禁用
+        """
+        services = await self.get_session_services(session_id)
+        return services.get("tts_enabled", True)
+
+    async def is_session_enabled(self, session_id: str) -> bool:
+        """检查会话是否整体启用
+
+        Args:
+            session_id: 会话 ID
+
+        Returns:
+            True 表示启用，False 表示禁用
+        """
+        services = await self.get_session_services(session_id)
+        return services.get("session_enabled", True)
+
+    async def set_session_enabled(self, session_id: str, enabled: bool) -> None:
+        """设置会话整体状态
+
+        Args:
+            session_id: 会话 ID
+            enabled: True 表示启用，False 表示禁用
+        """
+        services = await self.get_session_services(session_id)
+        services["session_enabled"] = enabled
+
+        self._session_services[session_id] = services
+        await self._save_session_services()
+
+        logger.info(
+            f"会话 {session_id} 的整体状态已更新为: {'启用' if enabled else '禁用'}"
+        )
+
+    # ============== 原有方法 ==============
 
     async def _load_sessions(self) -> None:
         """加载会话数据"""
@@ -244,12 +385,12 @@ class ConversationManager:
     async def _read_file_async(self, file_path: Path) -> str:
         """异步读取文件"""
         import asyncio
-        return await asyncio.to_thread(file_path.read_text, encoding='utf-8')
+        return await asyncio.to_thread(file_path.read_text, encoding="utf-8")
 
     async def _write_file_async(self, file_path: Path, content: str) -> None:
         """异步写入文件"""
         import asyncio
-        await asyncio.to_thread(file_path.write_text, content, encoding='utf-8')
+        await asyncio.to_thread(file_path.write_text, content, encoding="utf-8")
 
     def register_on_session_deleted(self, callback: SessionDeletedCallback) -> None:
         """注册会话删除回调"""
@@ -263,17 +404,23 @@ class ConversationManager:
             except Exception as e:
                 logger.error(f"Session deleted callback error: {e}")
 
-    def get_or_create_session(self, event: MessageEvent) -> Session:
+    def get_or_create_session(self, session_id: str, platform_id: str, channel_id: str, user_id: str) -> Session:
         """获取或创建会话"""
-        session_id = event.unified_id
 
         if session_id not in self._sessions:
             self._sessions[session_id] = Session(
                 session_id=session_id,
-                platform_id=event.platform_id,
-                channel_id=event.channel_id,
-                user_id=event.user_id
+                platform_id=platform_id,
+                channel_id=channel_id,
+                user_id=user_id
             )
+
+            # 创建默认服务配置
+            self._session_services[session_id] = {
+                "llm_enabled": True,
+                "tts_enabled": True,
+                "session_enabled": True,
+            }
 
         return self._sessions[session_id]
 
@@ -378,6 +525,7 @@ class ConversationManager:
                 persona_id=persona_id,
                 kb_ids=kb_ids or []
             )
+
             self._conversations[conv.conversation_id] = conv
             return conv
 
@@ -487,13 +635,13 @@ class ConversationManager:
             if conversation_id in session.conversation_ids:
                 session.conversation_ids.remove(conversation_id)
 
-            # 如果是当前对话，清除引用或切换到其他对话
-            if session.current_conversation_id == conversation_id:
-                # 尝试切换到其他对话
-                if session.conversation_ids:
-                    session.current_conversation_id = session.conversation_ids[-1]
-                else:
-                    session.current_conversation_id = None
+        # 如果是当前对话，清除引用或切换到其他对话
+        if session.current_conversation_id == conversation_id:
+            # 尝试切换到其他对话
+            if session.conversation_ids:
+                session.current_conversation_id = session.conversation_ids[-1]
+            else:
+                session.current_conversation_id = None
 
         # 保存变更
         await self._save_sessions()
@@ -525,11 +673,16 @@ class ConversationManager:
         # 删除会话
         del self._sessions[session_id]
 
+        # 删除服务配置
+        if session_id in self._session_services:
+            del self._session_services[session_id]
+
         # 触发回调
         await self._trigger_session_deleted(session_id)
 
         # 保存变更
         await self._save_sessions()
+        await self._save_session_services()
 
         logger.info(f"Deleted session: {session_id}")
         return True

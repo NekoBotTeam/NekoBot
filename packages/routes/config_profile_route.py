@@ -7,12 +7,11 @@
 import json
 import shutil
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 from loguru import logger
 
 from .route import Route, Response, RouteContext
-from ..core.config import load_config
 
 # 配置文件目录
 CONFIG_DIR = Path(__file__).parent.parent.parent / "data" / "config_profiles"
@@ -51,7 +50,7 @@ class ConfigProfileRoute(Route):
         if not self.active_profile_path.exists():
             # 默认返回 "default"
             return "default"
-        
+
         try:
             with open(self.active_profile_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -96,11 +95,11 @@ class ConfigProfileRoute(Route):
 
             # 检查是否有 default 配置
             profile_dirs = sorted([d for d in self.config_dir.iterdir() if d.is_dir()])
-            
+
             for profile_dir in profile_dirs:
                 profile_id = profile_dir.name
                 metadata_path = profile_dir / "metadata.json"
-                
+
                 # 获取元数据
                 metadata = {}
                 if metadata_path.exists():
@@ -132,7 +131,7 @@ class ConfigProfileRoute(Route):
         """获取指定配置文件内容 (AstrBot 规范)"""
         try:
             from quart import request
-            
+
             profile_id = request.args.get("id")
             if not profile_id:
                 return Response().error("缺少 id 参数").to_dict()

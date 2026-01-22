@@ -8,7 +8,7 @@ import time
 from typing import Dict, Any, Optional, List, Callable
 from loguru import logger
 
-from .config import load_config
+from ..config import load_config
 from .event_bus import EventBus, event_bus
 from .plugin_manager import PluginManager
 from ..platform import PlatformManager
@@ -228,6 +228,7 @@ class NekoBotLifecycle:
             except Exception as e:
                 logger.error(f"事件处理循环出错: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
 
     async def stop(self) -> None:
@@ -316,6 +317,7 @@ class NekoBotLifecycle:
             except Exception as e:
                 logger.error(f"启动钩子 {hook.__name__} 执行失败: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
 
     async def _execute_shutdown_hooks(self) -> None:
@@ -330,6 +332,7 @@ class NekoBotLifecycle:
             except Exception as e:
                 logger.error(f"关闭钩子 {hook.__name__} 执行失败: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
 
     def is_running(self) -> bool:
@@ -365,8 +368,4 @@ async def get_lifecycle() -> NekoBotLifecycle:
 
 
 # 显式导出的符号
-__all__ = [
-    "NekoBotLifecycle",
-    "lifecycle",
-    "get_lifecycle"
-]
+__all__ = ["NekoBotLifecycle", "lifecycle", "get_lifecycle"]

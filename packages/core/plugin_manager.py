@@ -1,12 +1,10 @@
 """插件管理器"""
 
-import os
 import re
 import sys
 import json
 import asyncio
 import tempfile
-import subprocess
 import importlib
 import shutil
 import zipfile
@@ -48,7 +46,11 @@ class PluginManager:
         self.official_plugins: Dict[str, str] = {}
         self.platform_server = None
         self.plugin_data_manager = PluginDataManager()
-        
+
+        # 插件操作互斥锁（参考 AstrBot 设计）
+        self._pm_lock = asyncio.Lock()
+        """插件管理器操作互斥锁，保护所有插件操作"""
+
         # 热重载管理器
         self.hot_reload_manager: Optional[HotReloadManager] = None
         self._hot_reload_enabled = False
@@ -196,32 +198,6 @@ class PluginManager:
             logger.error(f"禁用插件 {name} 失败: {e}")
             return False
 
-    async def reload_plugin(self, name: str) -> bool:
-        """重载插件：先禁用再重新加载模块"""
-        if name not in self.plugins:
-            logger.error(f"插件 {name} 不存在")
-            return False
-        try:
-            await self.disable_plugin(name)
-            module_path = self.official_plugins.get(name, f"{name}.main")
-            new_plugin = await self._load_plugin_from_module(module_path, name)
-            if new_plugin:
-                self.plugins[name] = new_plugin
-                # 设置平台服务器引用
-                if self.platform_server:
-                    new_plugin.set_platform_server(self.platform_server)
-                # 如果之前是启用状态，重新启用
-                if name in self.enabled_plugins:
-                    await new_plugin.on_enable()
-                logger.debug(f"已重载插件 {name}")
-                return True
-            else:
-                logger.error(f"重载插件 {name} 失败，未能创建新实例")
-                return False
-        except Exception as e:
-            logger.error(f"重载插件 {name} 失败: {e}")
-            return False
-
     def set_platform_server(self, platform_server):
         """设置平台服务器引用，供插件使用"""
         self.platform_server = platform_server
@@ -290,27 +266,27 @@ class PluginManager:
         if name not in self.plugins:
             logger.error(f"插件 {name} 不存在")
             return False
-        
+
         try:
             # 1. 获取插件模块路径
             plugin = self.plugins[name]
             module_path = None
-            
+
             # 从插件实例获取模块信息
-            if hasattr(plugin, '__module__'):
+            if hasattr(plugin, "__module__"):
                 module_path = plugin.__module__
             elif name in self.official_plugins:
                 module_path = self.official_plugins[name]
             else:
                 module_path = f"{name}.main"
-            
+
             # 2. 清理相关模块缓存
             await self._cleanup_plugin_modules(module_path)
-            
+
             # 3. 禁用插件
             was_enabled = name in self.enabled_plugins
             await self.disable_plugin(name)
-            
+
             # 4. 重新加载模块
             spec = importlib.util.find_spec(module_path)
             if spec and spec.loader:
@@ -318,11 +294,11 @@ class PluginManager:
                 if module_path in sys.modules:
                     del sys.modules[module_path]
                     logger.debug(f"已移除模块 {module_path} from sys.modules")
-                
+
                 # 重新导入模块
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
-                
+
                 # 查找插件类
                 plugin_cls: Optional[Type[BasePlugin]] = None
                 for attr_name in dir(module):
@@ -334,105 +310,176 @@ class PluginManager:
                     ):
                         plugin_cls = attr
                         break
-                
+
                 if not plugin_cls:
                     logger.error(f"插件 {name} 中未找到 BasePlugin 子类")
                     return False
-                
+
                 # 5. 创建新插件实例
                 new_plugin = plugin_cls()
                 create_plugin_decorator(new_plugin)
-                
+
                 # 6. 加载插件配置
                 plugin_path = self.plugin_dir / name
                 if plugin_path.exists():
                     conf_schema = self.plugin_data_manager.load_conf_schema(plugin_path)
                     if conf_schema:
                         new_plugin.conf_schema = conf_schema
-                
+
                 # 7. 调用 on_load
                 await new_plugin.on_load()
-                
+
                 # 8. 设置平台服务器引用
                 if self.platform_server:
                     new_plugin.set_platform_server(self.platform_server)
-                
+
                 # 9. 替换插件实例
                 self.plugins[name] = new_plugin
-                
+
                 # 10. 如果之前是启用状态，重新启用
                 if was_enabled:
                     await new_plugin.on_enable()
                     new_plugin.enabled = True
                     self.enabled_plugins.append(name)
-                
+
                 logger.info(f"插件 {name} 重载成功")
                 return True
-            
+
             return False
-            
+
         except Exception as e:
             logger.error(f"重载插件 {name} 失败: {e}")
             import traceback
             logger.error(traceback.format_exc())
             return False
-    
-    async def _cleanup_plugin_modules(self, module_path: str) -> None:
-        """清理插件相关的模块
-        
+
+    def _get_plugin_related_modules(
+        self, plugin_root_dir: str, is_official: bool = False
+    ) -> List[str]:
+        """获取与指定插件相关的所有已加载模块名（参考 AstrBot）
+
+        根据插件根目录名和是否为官方插件，从 sys.modules 中筛选出相关的模块名
+
+        Args:
+            plugin_root_dir: 插件根目录名
+            is_official: 是否是官方插件（影响模块路径前缀）
+
+        Returns:
+            与该插件相关的模块名列表
+        """
+        if is_official:
+            # 官方插件路径前缀
+            prefix = "packages.plugins."
+        else:
+            # 用户插件路径前缀（data.plugins）
+            prefix = f"{plugin_root_dir}."
+
+        return [
+            key
+            for key in list(sys.modules.keys())
+            if key.startswith(prefix)
+        ]
+
+    def _purge_modules(
+        self,
+        module_patterns: Optional[List[str]] = None,
+        root_dir_name: Optional[str] = None,
+        is_official: bool = False,
+    ) -> None:
+        """从 sys.modules 中移除指定的模块（参考 AstrBot）
+
+        可以基于模块名模式或插件目录名移除模块，用于清理插件相关的模块缓存
+
+        Args:
+            module_patterns: 要移除的模块名模式列表
+            root_dir_name: 插件根目录名
+            is_official: 插件是否为官方插件
+        """
+        if module_patterns:
+            for pattern in module_patterns:
+                for key in list(sys.modules.keys()):
+                    if key.startswith(pattern):
+                        del sys.modules[key]
+                        logger.debug(f"删除模块 {key}")
+
+        if root_dir_name:
+            for module_name in self._get_plugin_related_modules(
+                root_dir_name,
+                is_official,
+            ):
+                try:
+                    del sys.modules[module_name]
+                    logger.debug(f"删除模块 {module_name}")
+                except KeyError:
+                    logger.warning(f"模块 {module_name} 未载入")
+
+    async def _cleanup_plugin_modules(self, module_path: str, plugin_name: Optional[str] = None, is_official: bool = False) -> None:
+        """清理插件相关的模块（增强版）
+
         Args:
             module_path: 模块路径
+            plugin_name: 插件目录名（可选）
+            is_official: 是否是官方插件
         """
-        # 清理以插件路径开头的所有模块
+        # 方法1：清理以插件路径开头的所有模块
         modules_to_remove = [
             mod_name for mod_name in sys.modules.keys()
-            if mod_name.startswith(module_path.split('.')[0])
+            if mod_name.startswith(module_path.split(".")[0])
         ]
-        
-        for mod_name in modules_to_remove:
+
+        # 方法2：如果提供了插件名，使用更精确的清理（参考 AstrBot）
+        if plugin_name:
+            related_modules = self._get_plugin_related_modules(plugin_name, is_official)
+            modules_to_remove.extend(related_modules)
+
+        # 去重并清理
+        for mod_name in set(modules_to_remove):
             if mod_name in sys.modules:
                 del sys.modules[mod_name]
                 logger.debug(f"已清理模块: {mod_name}")
-    
-    def enable_hot_reload(self) -> None:
+
+    async def enable_hot_reload(self) -> None:
         """启用插件热重载"""
         if self._hot_reload_enabled:
             logger.warning("热重载已启用")
             return
-        
+
         try:
             from .hot_reload_manager import HotReloadManager
-            
+
             config_dir = Path(__file__).parent.parent.parent / "data" / "config"
-            
+
             self.hot_reload_manager = HotReloadManager(
                 plugin_dir=self.plugin_dir,
                 config_dir=config_dir,
                 plugin_reload_callback=self.reload_plugin,
                 config_reload_callback=lambda name: None  # 配置重载暂不处理
             )
-            
+
+            # 启动文件监视
+            await self.hot_reload_manager.start()
+
             self._hot_reload_enabled = True
             logger.info("插件热重载已启用")
-            
+
         except ImportError as e:
             logger.warning(f"无法启用热重载: {e}")
         except Exception as e:
             logger.error(f"启用热重载失败: {e}")
-    
+
     def disable_hot_reload(self) -> None:
         """禁用插件热重载"""
         if not self._hot_reload_enabled:
             return
-        
+
         if self.hot_reload_manager:
             import asyncio
             asyncio.create_task(self.hot_reload_manager.stop())
             self.hot_reload_manager = None
-        
+
         self._hot_reload_enabled = False
         logger.info("插件热重载已禁用")
-    
+
     def is_hot_reload_enabled(self) -> bool:
         """检查热重载是否启用"""
         return self._hot_reload_enabled
@@ -489,7 +536,7 @@ class PluginManager:
         """
         try:
             from .prompt_manager import prompt_manager
-            
+
             # 从 prompt_manager 获取所有启用的人格
             enabled_personalities = prompt_manager.get_enabled_personalities()
             if enabled_personalities:
@@ -497,7 +544,7 @@ class PluginManager:
                 prompt = enabled_personalities[0]["prompt"]
                 logger.debug(f"使用人格提示词: {enabled_personalities[0]['name']}")
                 return prompt
-            
+
             logger.warning("未找到启用的人格提示词，使用默认提示词")
             return ""
         except Exception as e:
@@ -658,7 +705,7 @@ class PluginManager:
             temp_dir.mkdir(parents=True, exist_ok=True)
 
             # 解压 ZIP 文件
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(temp_dir)
 
             # 查找插件目录
@@ -706,7 +753,7 @@ class PluginManager:
                 # 如果有 _conf_schema.json，创建数据库表
                 conf_schema_path = target_dir / "_conf_schema.json"
                 if conf_schema_path.exists():
-                    with open(conf_schema_path, 'r', encoding='utf-8') as f:
+                    with open(conf_schema_path, "r", encoding="utf-8") as f:
                         conf_schema = json.load(f)
                     # 这里可以添加创建数据库表的逻辑
                     logger.info(f"插件 {plugin_name} 包含配置 schema")
@@ -840,7 +887,7 @@ class PluginManager:
         metadata_path = plugin_dir / "metadata.yaml"
         if metadata_path.exists():
             try:
-                with open(metadata_path, 'r', encoding='utf-8') as f:
+                with open(metadata_path, "r", encoding="utf-8") as f:
                     return yaml.safe_load(f)
             except Exception as e:
                 logger.warning(f"加载插件元数据失败: {e}")
@@ -916,7 +963,7 @@ class PluginManager:
                 async with session.get(url, **kwargs) as response:
                     if response.status == 200:
                         content = await response.read()
-                        with open(dest_path, 'wb') as f:
+                        with open(dest_path, "wb") as f:
                             f.write(content)
                         logger.info(f"文件下载成功: {dest_path}")
                         return True
@@ -941,7 +988,7 @@ class PluginManager:
             是否安装成功
         """
         try:
-            with open(requirements_path, 'r', encoding='utf-8') as f:
+            with open(requirements_path, "r", encoding="utf-8") as f:
                 requirements = f.read()
 
             # 检查是否使用 uv
@@ -971,7 +1018,7 @@ class PluginManager:
             stdout, stderr = await process.communicate()
 
             if process.returncode == 0:
-                logger.info(f"插件依赖安装成功")
+                logger.info("插件依赖安装成功")
                 return True
             else:
                 logger.error(f"插件依赖安装失败: {stderr.decode()}")
@@ -1022,12 +1069,12 @@ class PluginManager:
         if plugin_name not in self.plugins:
             logger.error(f"插件 {plugin_name} 不存在")
             return {"success": False, "message": f"插件 {plugin_name} 不存在"}
-        
+
         plugin = self.plugins[plugin_name]
         await plugin.on_disable()
         if plugin_name in self.enabled_plugins:
             self.enabled_plugins.remove(plugin_name)
-        
+
         # 注销插件的所有命令
         try:
             from .command_management import unregister_plugin_commands
@@ -1037,19 +1084,19 @@ class PluginManager:
             logger.warning("命令管理系统未导入，跳过命令注销")
         except Exception as e:
             logger.error(f"插件 {plugin_name} 卸载时出错: {e}")
-        
+
         # 从插件列表中移除
         del self.plugins[plugin_name]
-        
+
         # 删除插件目录
         plugin_dir = self.plugin_dir / plugin_name
         if plugin_dir.exists():
             shutil.rmtree(plugin_dir)
             logger.info(f"已删除插件目录: {plugin_dir}")
-        
+
         # 删除插件数据
         self.delete_plugin_data(plugin_name)
-        
+
         return {"success": True, "message": f"插件 {plugin_name} 删除成功"}
 
     def parse_github_url(self, url: str) -> tuple[str, str, str | None]:

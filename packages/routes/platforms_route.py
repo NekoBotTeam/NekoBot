@@ -23,6 +23,13 @@ class PlatformsRoute(Route):
             ("/api/platforms/delete", "POST", self.delete_platform),
         ]
 
+        # 为每个路由处理器添加唯一的endpoint名称，避免冲突
+        self._method_name = type(self).__name__
+
+        for path, method, handler in self.routes:
+            # 给handler添加唯一的endpoint名称（包含路径和方法）
+            handler.__func__.endpoint_name = f"{self._method_name}_{path.replace('/', '_')}_{method.lower()}"
+
     def _add_platform_history(
         self,
         platform_id: str,

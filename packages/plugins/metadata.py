@@ -352,3 +352,113 @@ class MetadataRegistry:
         """清空所有元数据"""
         self._metadata_map.clear()
         logger.debug("已清空所有插件元数据")
+
+
+# ============== 插件自动注册机制 ==============
+
+# 全局插件注册表（使用 __init_subclass__ 自动注册）
+_plugin_map: Dict[str, PluginMetadata] = {}
+"""模块路径到插件元数据的映射"""
+
+_plugin_registry: List[PluginMetadata] = []
+"""所有已注册插件的元数据列表"""
+
+
+def register_plugin_metadata(metadata: PluginMetadata) -> None:
+    """注册插件元数据到全局注册表
+
+    Args:
+        metadata: 插件元数据
+    """
+    if metadata.module_path and metadata.module_path not in _plugin_map:
+        _plugin_map[metadata.module_path] = metadata
+    _plugin_registry.append(metadata)
+    logger.debug(f"已注册插件元数据: {metadata.name} ({metadata.module_path})")
+
+
+def get_plugin_metadata_by_module(module_path: str) -> Optional[PluginMetadata]:
+    """通过模块路径获取插件元数据
+
+    Args:
+        module_path: 模块路径
+
+    Returns:
+        插件元数据，如果不存在则返回 None
+    """
+    return _plugin_map.get(module_path)
+
+
+def get_all_plugin_metadata() -> List[PluginMetadata]:
+    """获取所有已注册的插件元数据
+
+    Returns:
+        所有插件元数据列表
+    """
+    return list(_plugin_registry)
+
+
+def clear_plugin_registry() -> None:
+    """清空全局插件注册表"""
+    global _plugin_map, _plugin_registry
+    _plugin_map.clear()
+    _plugin_registry.clear()
+    logger.debug("已清空全局插件注册表")
+
+
+class AutoRegisterMixin:
+    """插件自动注册混入类
+
+    使用 __init_subclass__ 实现自动注册机制，参考 AstrBot 框架
+
+    用法:
+        class MyPlugin(AutoRegisterMixin, BasePlugin):
+            _plugin_name = "my_plugin"
+            _plugin_author = "Your Name"
+            _plugin_version = "1.0.0"
+            _plugin_description = "My awesome plugin"
+
+            async def on_load(self):
+                pass
+
+            async def on_unload(self):
+                pass
+    """
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        # 获取模块路径
+        module_path = cls.__module__
+
+        # 如果模块还没有注册，创建新的元数据
+        if module_path not in _plugin_map:
+            # 从类属性中提取元数据
+            metadata = PluginMetadata(
+                name=getattr(cls, "_plugin_name", cls.__name__),
+                author=getattr(cls, "_plugin_author", "Unknown"),
+                version=getattr(cls, "_plugin_version", "1.0.0"),
+                desc=getattr(cls, "_plugin_desc", getattr(cls, "_plugin_description", "")),
+                repo=getattr(cls, "_plugin_repo", None),
+                display_name=getattr(cls, "_plugin_display_name", None),
+                module_path=module_path,
+                star_cls_type=cls,
+            )
+
+            register_plugin_metadata(metadata)
+
+            logger.debug(f"自动注册插件类: {metadata.name} ({module_path})")
+
+
+__all__ = [
+    "PluginMetadata",
+    "MetadataLoader",
+    "MetadataRegistry",
+    "register_plugin_metadata",
+    "get_plugin_metadata_by_module",
+    "get_all_plugin_metadata",
+    "clear_plugin_registry",
+    "AutoRegisterMixin",
+    "_plugin_map",
+    "_plugin_registry",
+]
+

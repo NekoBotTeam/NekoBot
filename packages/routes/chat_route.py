@@ -81,7 +81,7 @@ class ChatRoute(Route):
         await self._save_user_message(session_id, username, message)
 
         # 获取 LLM 提供商配置
-        from ..core.config import load_config
+        from ..config import load_config
 
         config = load_config()
         llm_providers = config.get("llm_providers", {})
@@ -114,7 +114,7 @@ class ChatRoute(Route):
             try:
                 async with track_conversation(self.running_convs, session_id):
                     # 调用真实的 LLM API
-                    if enable_streaming and hasattr(self, '_stream_llm_response'):
+                    if enable_streaming and hasattr(self, "_stream_llm_response"):
                         # 尝试使用流式响应
                         async for chunk in self._stream_llm_response(
                             message, provider_config, selected_model, session_id
@@ -175,7 +175,6 @@ class ChatRoute(Route):
             LLM 响应文本
         """
         from packages.provider.register import llm_provider_cls_map
-        from packages.provider.context_manager import LLMContextManager, ContextConfig, ContextCompressionStrategy
 
         provider_type = provider_config.get("type", "unknown")
         logger.info(
@@ -202,10 +201,9 @@ class ChatRoute(Route):
             # 转换会话历史为 LLM 上下文格式
             contexts = []
             for msg in sessions[session_id].get("messages", []):
-                contexts.append({
-                    "role": msg.get("role"),
-                    "content": msg.get("content")
-                })
+                contexts.append(
+                    {"role": msg.get("role"), "content": msg.get("content")}
+                )
             # 只保留最近的 N 条消息
             max_messages = provider_config.get("max_messages", 20)
             if contexts and len(contexts) > max_messages:
@@ -243,7 +241,6 @@ class ChatRoute(Route):
             响应文本块
         """
         from packages.provider.register import llm_provider_cls_map
-        from packages.provider.context_manager import LLMContextManager, ContextConfig, ContextCompressionStrategy
 
         provider_type = provider_config.get("type", "unknown")
 
@@ -261,9 +258,11 @@ class ChatRoute(Route):
             provider.set_model(model)
 
         # 检查是否支持流式响应
-        if not hasattr(provider, 'text_chat_stream'):
+        if not hasattr(provider, "text_chat_stream"):
             # 不支持流式，回退到普通响应
-            response_text = await self._call_llm_response(message, provider_config, model, session_id)
+            response_text = await self._call_llm_response(
+                message, provider_config, model, session_id
+            )
             for chunk in self._chunk_text(response_text):
                 yield chunk
             return
@@ -274,10 +273,9 @@ class ChatRoute(Route):
         if session_id in sessions:
             contexts = []
             for msg in sessions[session_id].get("messages", []):
-                contexts.append({
-                    "role": msg.get("role"),
-                    "content": msg.get("content")
-                })
+                contexts.append(
+                    {"role": msg.get("role"), "content": msg.get("content")}
+                )
             max_messages = provider_config.get("max_messages", 20)
             if contexts and len(contexts) > max_messages:
                 contexts = contexts[-max_messages:]

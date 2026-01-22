@@ -375,10 +375,10 @@ class ProcessStage(Stage):
             except Exception as e:
                 logger.warning(f"加载人格提示词失败: {e}，使用默认提示词")
                 personality_prompt = ""
-            
+
             # 从 prompt_manager 获取系统提示词
             system_prompt_base = prompt_manager.get_system_prompt()
-            
+
             # 构建用户信息系统提示词
             user_info_prompt = f"""{system_prompt_base}
 
@@ -978,9 +978,9 @@ class ProcessStage(Stage):
 
             text = f"可用工具（共 {len(tools)} 个）:\n"
             for tool in tools:
-                status = "✓" if getattr(tool, 'enabled', True) else "✗"
-                name = getattr(tool, 'name', tool.__class__.__name__)
-                desc = getattr(tool, 'description', '无描述')
+                status = "✓" if getattr(tool, "enabled", True) else "✗"
+                name = getattr(tool, "name", tool.__class__.__name__)
+                desc = getattr(tool, "description", "无描述")
                 text += f"  {status} {name}: {desc}\n"
             await self._send_message(event, ctx, text)
         elif action == "enable":
@@ -1011,11 +1011,11 @@ class ProcessStage(Stage):
         6. 私聊消息根据配置决定是否需要唤醒前缀
         """
         from ..config import load_config
-        
+
         message = event.get("message", "")
         self_id = event.get("self_id")
         message_type = event.get("message_type", "")
-        
+
         # 加载配置
         config = load_config()
         wake_prefixes = config.get("wake_prefix", ["/", "."])
@@ -1032,47 +1032,47 @@ class ProcessStage(Stage):
             str(self_id),
             int(self_id) if str(self_id).isdigit() else None
         }.difference({None})
-        
+
         logger.debug(f"self_id 集合: {self_id_set}")
 
         if isinstance(message, list):
             first_seg_is_at = False
             at_qq_first = None
-            
+
             # 首先检查是否有艾特或引用
             for i, msg_seg in enumerate(message):
                 seg_type = msg_seg.get("type", "")
                 seg_data = msg_seg.get("data", {})
                 logger.debug(f"消息段: type={seg_type}, data={seg_data}")
-                
+
                 # 检查 at 消息段
                 if seg_type == "at":
                     at_qq = seg_data.get("qq", "")
-                    
+
                     # 记录第一个 at 消息段的 QQ 号
                     if i == 0:
                         first_seg_is_at = True
                         at_qq_first = at_qq
-                    
+
                     # 检查是否艾特全体成员
                     if str(at_qq) == "all":
                         if ignore_at_all:
-                            logger.debug(f"忽略艾特全体成员")
+                            logger.debug("忽略艾特全体成员")
                             continue
-                        logger.debug(f"检测到艾特全体成员")
+                        logger.debug("检测到艾特全体成员")
                         return True
-                    
+
                     # 尝试多种格式比较
                     at_qq_formats = {
                         str(at_qq),
                         int(at_qq) if str(at_qq).isdigit() else None
                     }.difference({None})
-                    
+
                     # 检查是否有交集
                     if self_id_set & at_qq_formats:
                         logger.debug(f"检测到艾特机器人: at_qq={at_qq}, self_id={self_id}")
                         return True
-                
+
                 # 检查 reply 消息段（引用消息）
                 elif seg_type == "reply":
                     reply_sender_id = seg_data.get("sender_id", "")
@@ -1081,7 +1081,7 @@ class ProcessStage(Stage):
                             str(reply_sender_id),
                             int(reply_sender_id) if str(reply_sender_id).isdigit() else None
                         }.difference({None})
-                        
+
                         if self_id_set & reply_sender_formats:
                             logger.debug(f"检测到引用机器人的消息: sender_id={reply_sender_id}")
                             return True
@@ -1091,7 +1091,7 @@ class ProcessStage(Stage):
                 if msg_seg.get("type") == "text":
                     text = msg_seg.get("data", {}).get("text", "")
                     text_stripped = text.strip()
-                    
+
                     # 检查是否以唤醒前缀开头
                     for prefix in wake_prefixes:
                         if text_stripped.startswith(prefix):
@@ -1099,31 +1099,31 @@ class ProcessStage(Stage):
                             if message_type == "group" and first_seg_is_at:
                                 if at_qq_first is not None and str(at_qq_first) != "all":
                                     # 第一个艾特不是机器人也不是全体成员，不唤醒
-                                    logger.debug(f"群聊中第一个艾特不是机器人或全体成员，不唤醒")
+                                    logger.debug("群聊中第一个艾特不是机器人或全体成员，不唤醒")
                                     return False
                             logger.debug(f"检测到唤醒前缀: {prefix}")
                             return True
-                    
+
                     break
 
             # 检查私聊消息
             if message_type == "private" and not private_needs_wake_prefix:
-                logger.debug(f"私聊消息自动唤醒")
+                logger.debug("私聊消息自动唤醒")
                 return True
 
         elif isinstance(message, str):
             # 纯字符串消息（兼容性处理）
             text_stripped = message.strip()
-            
+
             # 检查是否以唤醒前缀开头
             for prefix in wake_prefixes:
                 if text_stripped.startswith(prefix):
                     logger.debug(f"检测到唤醒前缀: {prefix}")
                     return True
-            
+
             # 检查私聊消息
             if message_type == "private" and not private_needs_wake_prefix:
-                logger.debug(f"私聊消息自动唤醒")
+                logger.debug("私聊消息自动唤醒")
                 return True
 
         return False

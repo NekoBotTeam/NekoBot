@@ -4,8 +4,6 @@
 """
 
 import asyncio
-import importlib
-import sys
 import time
 import tracemalloc
 import gc
@@ -68,23 +66,23 @@ class HotReloadManager:
         self.config_dir = config_dir
         self.plugin_reload_callback = plugin_reload_callback
         self.config_reload_callback = config_reload_callback
-        
+
         # 状态管理
         self._running = False
         self._watch_task: Optional[asyncio.Task] = None
         self._reload_lock = asyncio.Lock()
-        
+
         # 重载历史（避免重复重载）
         self._reloaded_plugins: Set[str] = set()
         self._reloaded_configs: Set[str] = set()
         self._reload_history: List[ReloadEvent] = []
-        
+
         # 性能监控
         self._max_history_size = 100
-        
+
         # 内存监控
         self._memory_snapshots: Dict[str, Dict[str, int]] = {}
-        
+
         # 路由管理
         self._dynamic_routes: Dict[str, Any] = {}
 
@@ -149,7 +147,7 @@ class HotReloadManager:
 
         for change_type, file_path in changes:
             file_path = Path(file_path)
-            
+
             # 判断文件类型
             if self._is_plugin_file(file_path):
                 plugin_changes.append((change_type, file_path))
@@ -249,31 +247,31 @@ class HotReloadManager:
         try:
             async with self._reload_lock:
                 logger.info(f"正在重载插件 {plugin_name}...")
-                
+
                 # 执行重载回调
                 await self.plugin_reload_callback(plugin_name)
-                
+
                 # 标记为已重载
                 self._reloaded_plugins.add(plugin_name)
-                
+
                 # 延迟清理标记
                 asyncio.create_task(self._delayed_clear_plugin_history(plugin_name))
-                
+
                 success = True
                 logger.info(f"插件 {plugin_name} 重载成功")
-                
+
         except Exception as e:
             error_msg = str(e)
             logger.error(f"重载插件 {plugin_name} 失败: {e}")
             import traceback
             logger.error(traceback.format_exc())
-            
+
             # 尝试恢复
             await self._recover_plugin(plugin_name)
-            
+
         finally:
             duration_ms = (time.time() - start_time) * 1000
-            
+
             # 记录重载事件
             event = ReloadEvent(
                 event_type=ReloadEventType.PLUGIN_RELOAD,
@@ -283,7 +281,7 @@ class HotReloadManager:
                 error=error_msg
             )
             self._add_reload_event(event)
-            
+
             # 检查内存泄漏
             self._check_memory_leak(f"before_reload_{plugin_name}", f"after_reload_{plugin_name}")
 
@@ -309,33 +307,33 @@ class HotReloadManager:
         try:
             async with self._reload_lock:
                 logger.info(f"正在重载配置 {config_name}...")
-                
+
                 # 验证配置
                 if not await self._validate_config(config_name):
                     logger.error(f"配置 {config_name} 验证失败，跳过重载")
                     return False
-                
+
                 # 执行重载回调
                 await self.config_reload_callback(config_name)
-                
+
                 # 标记为已重载
                 self._reloaded_configs.add(config_name)
-                
+
                 # 延迟清理标记
                 asyncio.create_task(self._delayed_clear_config_history(config_name))
-                
+
                 success = True
                 logger.info(f"配置 {config_name} 重载成功")
-                
+
         except Exception as e:
             error_msg = str(e)
             logger.error(f"重载配置 {config_name} 失败: {e}")
             import traceback
             logger.error(traceback.format_exc())
-            
+
         finally:
             duration_ms = (time.time() - start_time) * 1000
-            
+
             # 记录重载事件
             event = ReloadEvent(
                 event_type=ReloadEventType.CONFIG_RELOAD,
@@ -345,7 +343,7 @@ class HotReloadManager:
                 error=error_msg
             )
             self._add_reload_event(event)
-            
+
             # 性能警告
             if duration_ms > 300:
                 logger.warning(f"配置 {config_name} 重载耗时 {duration_ms:.2f}ms，超过 300ms 阈值")
@@ -455,7 +453,7 @@ class HotReloadManager:
             event: 重载事件
         """
         self._reload_history.append(event)
-        
+
         # 限制历史记录大小
         if len(self._reload_history) > self._max_history_size:
             self._reload_history.pop(0)
@@ -468,7 +466,7 @@ class HotReloadManager:
         """
         if not tracemalloc.is_tracing():
             tracemalloc.start()
-            
+
         current, peak = tracemalloc.get_traced_memory()
         self._memory_snapshots[label] = {
             "current": current,
@@ -485,16 +483,16 @@ class HotReloadManager:
         """
         if before_label not in self._memory_snapshots:
             return
-            
+
         if after_label not in self._memory_snapshots:
             return
-            
+
         before = self._memory_snapshots[before_label]["current"]
         after = self._memory_snapshots[after_label]["current"]
-        
+
         diff = after - before
         diff_mb = diff / (1024 * 1024)
-        
+
         if diff_mb > 10:  # 超过 10MB 认为可能有内存泄漏
             logger.warning(
                 f"检测到可能的内存泄漏: {diff_mb:.2f}MB "
@@ -517,9 +515,9 @@ class HotReloadManager:
         """
         if route_id in self._dynamic_routes:
             logger.warning(f"路由 {route_id} 已存在，将被覆盖")
-            
+
         self._dynamic_routes[route_id] = route
-        
+
         # 记录路由注册事件
         event = ReloadEvent(
             event_type=ReloadEventType.ROUTE_REGISTER,
@@ -529,7 +527,7 @@ class HotReloadManager:
             details={"route": str(route)}
         )
         self._add_reload_event(event)
-        
+
         logger.debug(f"已注册动态路由: {route_id}")
         return True
 
@@ -545,9 +543,9 @@ class HotReloadManager:
         if route_id not in self._dynamic_routes:
             logger.warning(f"路由 {route_id} 不存在")
             return False
-            
+
         del self._dynamic_routes[route_id]
-        
+
         # 记录路由注销事件
         event = ReloadEvent(
             event_type=ReloadEventType.ROUTE_UNREGISTER,
@@ -556,7 +554,7 @@ class HotReloadManager:
             duration_ms=0
         )
         self._add_reload_event(event)
-        
+
         logger.debug(f"已注销动态路由: {route_id}")
         return True
 
@@ -591,7 +589,7 @@ class HotReloadManager:
             重载历史列表
         """
         events = self._reload_history[-limit:] if limit > 0 else self._reload_history
-        
+
         return [
             {
                 "type": event.event_type.value,
@@ -613,15 +611,15 @@ class HotReloadManager:
         total_events = len(self._reload_history)
         plugin_reloads = sum(1 for e in self._reload_history if e.event_type == ReloadEventType.PLUGIN_RELOAD)
         config_reloads = sum(1 for e in self._reload_history if e.event_type == ReloadEventType.CONFIG_RELOAD)
-        
+
         successful_reloads = sum(1 for e in self._reload_history if e.success)
         failed_reloads = total_events - successful_reloads
-        
+
         avg_duration = (
             sum(e.duration_ms for e in self._reload_history) / total_events
             if total_events > 0 else 0
         )
-        
+
         return {
             "total_events": total_events,
             "plugin_reloads": plugin_reloads,

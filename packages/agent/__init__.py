@@ -4,7 +4,7 @@
 """
 
 # 新架构组件
-from .base_new import AgentConfig, BaseAgent, LLMAgent, AgentExecutor
+from .base import AgentConfig, BaseAgent, LLMAgent, AgentExecutor
 from .hooks import (
     AgentHookPhase,
     AgentHookContext,

@@ -3,7 +3,7 @@
 支持 Agent 生命周期的钩子机制
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Generic

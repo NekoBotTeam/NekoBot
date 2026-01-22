@@ -12,6 +12,7 @@ from .content_safety_check_stage import ContentSafetyCheckStage
 from .rate_limit_stage import RateLimitStage
 from .session_status_check_stage import SessionStatusCheckStage
 from .waking_check_stage import WakingCheckStage
+from .preprocess_stage import PreProcessStage
 from .process_stage import ProcessStage
 from .result_decorate_stage import ResultDecorateStage
 from .respond_stage import RespondStage
@@ -26,6 +27,7 @@ __all__ = [
     "RateLimitStage",
     "SessionStatusCheckStage",
     "WakingCheckStage",
+    "PreProcessStage",
     "ProcessStage",
     "ResultDecorateStage",
     "RespondStage",

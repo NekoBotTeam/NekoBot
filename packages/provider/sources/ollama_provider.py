@@ -52,7 +52,7 @@ class OllamaProvider(BaseLLMProvider):
         logger.info("[Ollama] 初始化提供商...")
         if not self.api_key:
             logger.warning("[Ollama] API Key 未配置，本地部署可能不需要 API Key")
-        
+
         self._client = httpx.AsyncClient(timeout=self.timeout, verify=False)
 
     async def get_models(self) -> list[str]:
@@ -63,7 +63,7 @@ class OllamaProvider(BaseLLMProvider):
                 json={"include_local": True}
             )
             response.raise_for_status()
-            
+
             result = response.json()
             if "data" in result:
                 models = result["data"]
@@ -89,20 +89,20 @@ class OllamaProvider(BaseLLMProvider):
     ) -> list[dict]:
         """构建消息列表"""
         messages = []
-        
+
         # 添加系统提示词
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
-        
+
         # 添加上下文
         if contexts:
             for ctx in contexts:
                 messages.append(ctx)
-        
+
         # 添加用户消息
         if prompt:
             messages.append({"role": "user", "content": prompt})
-        
+
         return messages
 
     async def text_chat(
@@ -114,39 +114,41 @@ class OllamaProvider(BaseLLMProvider):
         contexts: Optional[list[dict]] = None,
         system_prompt: Optional[str] = None,
         model: Optional[str] = None,
+        tool_calls_result: Any = None,
+        extra_user_content_parts: Any = None,
         **kwargs,
     ) -> LLMResponse:
         """文本对话"""
         try:
             model = model or self.model_name
             messages = self._build_messages(prompt, system_prompt, contexts)
-            
+
             payload = {
                 "model": model,
                 "messages": messages,
                 "stream": False,
             }
-            
+
             response = await self._client.post(
                 f"{self.base_url}/chat/completions",
                 json=payload,
             )
             response.raise_for_status()
-            
+
             result = response.json()
-            
+
             if "choices" in result and len(result["choices"]) > 0:
                 choice = result["choices"][0]
                 content = choice.get("message", {}).get("content", "")
-                
+
                 usage_data = choice.get("usage", {})
                 usage = TokenUsage(
                     input_other=usage_data.get("prompt_tokens", 0),
                     output=usage_data.get("completion_tokens", 0),
                 )
-                
+
                 logger.debug(f"[Ollama] 收到响应，使用 {usage.input_other + usage.output} tokens")
-                
+
                 return LLMResponse(
                     role="assistant",
                     completion_text=content,
@@ -154,7 +156,7 @@ class OllamaProvider(BaseLLMProvider):
                     usage=usage,
                 )
             else:
-                logger.warning(f"[Ollama] 响应格式异常")
+                logger.warning("[Ollama] 响应格式异常")
                 return LLMResponse(
                     role="assistant",
                     completion_text="",
@@ -179,51 +181,53 @@ class OllamaProvider(BaseLLMProvider):
         contexts: Optional[list[dict]] = None,
         system_prompt: Optional[str] = None,
         model: Optional[str] = None,
+        tool_calls_result: Any = None,
+        extra_user_content_parts: Any = None,
         **kwargs,
     ) -> AsyncGenerator[LLMResponse, None]:
         """流式文本对话"""
         try:
             model = model or self.model_name
             messages = self._build_messages(prompt, system_prompt, contexts)
-            
+
             payload = {
                 "model": model,
                 "messages": messages,
                 "stream": True,
             }
-            
+
             async with self._client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
                 json=payload,
             ) as response:
                 response.raise_for_status()
-                
+
                 async for line in response.aiter_lines():
                     if not line.strip():
                         continue
-                    
+
                     try:
                         if line.startswith("data: "):
                             data_str = line[6:].strip()
                             if data_str == "[DONE]":
                                 break
-                            
+
                             import json
                             try:
                                 data = json.loads(data_str)
-                                
+
                                 if "choices" in data and len(data["choices"]) > 0:
                                     delta = data["choices"][0].get("delta", {})
                                     completion_text = delta.get("content", "")
-                                    
+
                                     if completion_text:
                                         yield LLMResponse(
                                             role="assistant",
                                             completion_text=completion_text,
                                             is_chunk=True,
                                         )
-                                        
+
                                         if "usage" in data:
                                             usage_data = data["usage"]
                                             yield LLMResponse(
@@ -238,7 +242,7 @@ class OllamaProvider(BaseLLMProvider):
                             except json.JSONDecodeError:
                                 logger.warning(f"[Ollama] 解析响应行失败: {line}")
                                 continue
-                    
+
                     except Exception as e:
                         logger.error(f"[Ollama] 流式对话失败: {e}")
                         yield LLMResponse(
@@ -246,7 +250,7 @@ class OllamaProvider(BaseLLMProvider):
                             completion_text=str(e),
                             is_chunk=True,
                         )
-                
+
                 # 发送结束标记
                 yield LLMResponse(
                     role="assistant",
@@ -261,16 +265,20 @@ class OllamaProvider(BaseLLMProvider):
                 is_chunk=True,
             )
 
-    async def test(self, timeout: float = 45.0) -> None:
-        """测试提供商连接"""
+    async def test(self, timeout: float = 45.0, test_prompt: str | None = None) -> None:
+        """测试提供商连接
+
+        Args:
+            timeout: 超时时间（秒）
+            test_prompt: 测试提示词，如果为 None 则使用默认提示词
+
+        Raises:
+            Exception: 如果测试连接失败
+        """
         try:
-            import asyncio
-            await asyncio.wait_for(
-                self.text_chat(prompt="REPLY `PONG` ONLY"),
-                timeout=timeout,
-            )
+            await super().test(timeout=timeout, test_prompt=test_prompt)
         except Exception as e:
-            raise Exception(f"测试连接失败: {e}")
+            raise Exception(f"[Ollama] 测试连接失败: {e}")
 
     async def close(self) -> None:
         """关闭提供商"""

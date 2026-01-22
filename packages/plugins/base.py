@@ -8,6 +8,23 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
+__all__ = [
+    "BasePlugin",
+    "register",
+    "unregister",
+    "reload_plugin",
+    "enable_plugin",
+    "disable_plugin",
+    "export_commands",
+    "on_message",
+    "on_private_message",
+    "on_group_message",
+    "PluginDecorator",
+    "create_plugin_decorator",
+    "CommandInfo",
+]
+
+
 @dataclass
 class CommandInfo:
     """命令信息数据类"""
@@ -18,13 +35,72 @@ class CommandInfo:
 
 
 class BasePlugin(ABC):
-    """插件基类"""
+    """插件基类（支持自动注册）
+
+    插件可以通过类属性定义元数据，使用 __init_subclass__ 自动注册。
+
+    用法:
+        class MyPlugin(BasePlugin):
+            _plugin_name = "my_plugin"
+            _plugin_author = "Your Name"
+            _plugin_version = "1.0.0"
+            _plugin_description = "My awesome plugin"
+
+            async def on_load(self):
+                pass
+
+            async def on_unload(self):
+                pass
+    """
+
+    # 类属性：插件元数据（子类可覆盖）
+    _plugin_name: Optional[str] = None
+    _plugin_author: Optional[str] = None
+    _plugin_version: Optional[str] = None
+    _plugin_description: Optional[str] = None
+    _plugin_desc: Optional[str] = None  # _plugin_description 的别名
+    _plugin_repo: Optional[str] = None
+    _plugin_display_name: Optional[str] = None
+
+    def __init_subclass__(cls, **kwargs):
+        """子类化时自动注册插件元数据"""
+        super().__init_subclass__(**kwargs)
+
+        # 延迟导入以避免循环依赖
+        from .metadata import register_plugin_metadata, PluginMetadata, _plugin_map
+
+        module_path = cls.__module__
+
+        # 只在首次注册时创建元数据
+        if module_path not in _plugin_map:
+            # 处理 desc 和 description 兼容性
+            desc = getattr(cls, "_plugin_desc", None)
+            description = getattr(cls, "_plugin_description", None)
+            if desc is None and description is not None:
+                desc = description
+            elif description is None and desc is not None:
+                description = desc
+
+            metadata = PluginMetadata(
+                name=getattr(cls, "_plugin_name", cls.__name__),
+                author=getattr(cls, "_plugin_author", "Unknown"),
+                version=getattr(cls, "_plugin_version", "1.0.0"),
+                desc=desc,
+                description=description,
+                repo=getattr(cls, "_plugin_repo", None),
+                display_name=getattr(cls, "_plugin_display_name", None),
+                module_path=module_path,
+                star_cls_type=cls,
+            )
+
+            register_plugin_metadata(metadata)
+            logger.debug(f"自动注册插件: {metadata.name} ({module_path})")
 
     def __init__(self):
         self.name = self.__class__.__name__
-        self.version = "1.0.0"
-        self.description = ""
-        self.author = ""
+        self.version = getattr(self.__class__, "_plugin_version", "1.0.0")
+        self.description = getattr(self.__class__, "_plugin_description", "")
+        self.author = getattr(self.__class__, "_plugin_author", "")
         self.enabled = False
         self.commands: Dict[str, Callable] = {}
         self.message_handlers: List[Callable] = []

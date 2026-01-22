@@ -3,7 +3,6 @@
 提供系统资源监控信息
 """
 
-import json
 from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
@@ -11,16 +10,26 @@ from loguru import logger
 from quart import request
 
 from .route import Route, Response, RouteContext
+from packages.common import (
+    JsonFileHandler,
+    handle_route_errors,
+)
 
 # 系统信息缓存路径
-SYSTEM_CACHE_PATH = Path(__file__).parent.parent.parent.parent / "data" / "system_cache.json"
+SYSTEM_CACHE_PATH = (
+    Path(__file__).parent.parent.parent.parent / "data" / "system_cache.json"
+)
 
 
 class SystemRoute(Route):
     """系统信息路由"""
 
+    DEFAULT_CACHE_TTL = 60
+
     def __init__(self, context: RouteContext) -> None:
         super().__init__(context)
+        self.json_handler = JsonFileHandler(SYSTEM_CACHE_PATH.parent)
+        self.cache_filename = SYSTEM_CACHE_PATH.name
         self.routes = [
             ("/api/system/info", "GET", self.get_system_info),
             ("/api/system/webui/update", "POST", self.update_webui),
@@ -31,25 +40,19 @@ class SystemRoute(Route):
 
     def _load_system_cache(self) -> Dict[str, Any]:
         """加载系统信息缓存"""
-        if not SYSTEM_CACHE_PATH.exists():
-            return {"data": None, "cached_at": None, "ttl": 60}
-        try:
-            with open(SYSTEM_CACHE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"加载系统缓存失败: {e}")
-            return {"data": None, "cached_at": None, "ttl": 60}
+        default_cache = {"data": None, "cached_at": None, "ttl": self.DEFAULT_CACHE_TTL}
+        return self.json_handler.load(self.cache_filename, default=default_cache)
 
-    def _save_system_cache(self, data: Dict[str, Any], ttl: int = 60) -> None:
+    def _save_system_cache(
+        self, data: Dict[str, Any], ttl: int = DEFAULT_CACHE_TTL
+    ) -> None:
         """保存系统信息缓存"""
-        SYSTEM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         cache = {
             "data": data,
             "cached_at": datetime.utcnow().isoformat(),
             "ttl": ttl,
         }
-        with open(SYSTEM_CACHE_PATH, "w", encoding="utf-8") as f:
-            json.dump(cache, f, indent=2, ensure_ascii=False)
+        self.json_handler.save(self.cache_filename, cache)
 
     def _is_cache_valid(self, cache: Dict[str, Any]) -> bool:
         """检查缓存是否有效"""
@@ -58,7 +61,7 @@ class SystemRoute(Route):
 
         try:
             cached_at = datetime.fromisoformat(cache["cached_at"])
-            ttl = cache.get("ttl", 60)
+            ttl = cache.get("ttl", self.DEFAULT_CACHE_TTL)
             return (datetime.utcnow() - cached_at).total_seconds() < ttl
         except Exception:
             return False
@@ -264,7 +267,9 @@ class SystemRoute(Route):
                 "pid": process.pid,
                 "name": process.name(),
                 "status": process.status(),
-                "create_time": datetime.fromtimestamp(process.create_time()).isoformat(),
+                "create_time": datetime.fromtimestamp(
+                    process.create_time()
+                ).isoformat(),
                 "cpu_percent": round(process.cpu_percent(interval=0.1), 1),
                 "memory_info": {
                     "rss": process.memory_info().rss,
@@ -328,9 +333,11 @@ class SystemRoute(Route):
                 cache = self._load_system_cache()
                 if self._is_cache_valid(cache):
                     logger.debug("使用缓存的系统信息")
-                    return Response().ok(
-                        data=cache["data"], message="获取系统信息成功（缓存）"
-                    ).to_dict()
+                    return (
+                        Response()
+                        .ok(data=cache["data"], message="获取系统信息成功（缓存）")
+                        .to_dict()
+                    )
 
             # 获取系统信息
             cpu_info = self._get_cpu_info()
@@ -364,7 +371,11 @@ class SystemRoute(Route):
             from ..core.server import get_webui_version
 
             version = get_webui_version()
-            return Response().ok(data={"version": version}, message="获取 WebUI 版本成功").to_dict()
+            return (
+                Response()
+                .ok(data={"version": version}, message="获取 WebUI 版本成功")
+                .to_dict()
+            )
         except Exception as e:
             logger.error(f"获取 WebUI 版本失败: {e}", exc_info=True)
             return Response().error(f"获取 WebUI 版本失败: {str(e)}").to_dict()
@@ -393,7 +404,11 @@ class SystemRoute(Route):
                 from ..core.server import get_webui_version
 
                 version = get_webui_version()
-                return Response().ok(data={"version": version}, message="WebUI 更新成功").to_dict()
+                return (
+                    Response()
+                    .ok(data={"version": version}, message="WebUI 更新成功")
+                    .to_dict()
+                )
             else:
                 return Response().error("WebUI 更新失败，请检查日志").to_dict()
         except Exception as e:
@@ -404,11 +419,14 @@ class SystemRoute(Route):
         """获取当前 CORS 配置"""
         try:
             cors_config = self.context.config.get("cors", {})
-            return Response().ok(data=cors_config, message="获取 CORS 配置成功").to_dict()
+            return (
+                Response().ok(data=cors_config, message="获取 CORS 配置成功").to_dict()
+            )
         except Exception as e:
             logger.error(f"获取 CORS 配置失败: {e}", exc_info=True)
             return Response().error(f"获取 CORS 配置失败: {str(e)}").to_dict()
 
+    @handle_route_errors("更新CORS配置")
     async def update_cors_config(self) -> Dict[str, Any]:
         """更新 CORS 配置
 
@@ -420,41 +438,37 @@ class SystemRoute(Route):
         返回:
             更新结果
         """
-        try:
-            from ..core.config import CORS_CONFIG_PATH
+        data = await request.get_json()
 
-            data = await request.get_json()
+        if not data:
+            return Response().error("请求体不能为空").to_dict()
 
-            if not data:
-                return Response().error("请求体不能为空").to_dict()
+        cors_config_path = (
+            Path(__file__).parent.parent.parent.parent / "data" / "config.json"
+        )
 
-            # 读取现有配置
-            if CORS_CONFIG_PATH.exists():
-                with open(CORS_CONFIG_PATH, "r", encoding="utf-8") as f:
-                    cors_config = json.load(f)
-            else:
-                cors_config = {
-                    "allow_origin": "*",
-                    "allow_headers": ["Content-Type", "Authorization"],
-                    "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                }
+        cors_config = self.json_handler.load(
+            cors_config_path.name,
+            default={
+                "allow_origin": "*",
+                "allow_headers": ["Content-Type", "Authorization"],
+                "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            },
+        )
 
-            # 更新配置
-            if "allow_origin" in data:
-                cors_config["allow_origin"] = data["allow_origin"]
-            if "allow_headers" in data:
-                cors_config["allow_headers"] = data["allow_headers"]
-            if "allow_methods" in data:
-                cors_config["allow_methods"] = data["allow_methods"]
+        if "allow_origin" in data:
+            cors_config["allow_origin"] = data["allow_origin"]
+        if "allow_headers" in data:
+            cors_config["allow_headers"] = data["allow_headers"]
+        if "allow_methods" in data:
+            cors_config["allow_methods"] = data["allow_methods"]
 
-            # 保存配置
-            CORS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(CORS_CONFIG_PATH, "w", encoding="utf-8") as f:
-                json.dump(cors_config, f, indent=2, ensure_ascii=False)
+        self.json_handler.save(cors_config_path.name, cors_config)
 
-            logger.info(f"CORS 配置已更新: allow_origin={cors_config.get('allow_origin')}")
+        logger.info(f"CORS 配置已更新: allow_origin={cors_config.get('allow_origin')}")
 
-            return Response().ok(data=cors_config, message="CORS 配置更新成功，请重启服务以生效").to_dict()
-        except Exception as e:
-            logger.error(f"更新 CORS 配置失败: {e}", exc_info=True)
-            return Response().error(f"更新 CORS 配置失败: {str(e)}").to_dict()
+        return (
+            Response()
+            .ok(data=cors_config, message="CORS 配置更新成功，请重启服务以生效")
+            .to_dict()
+        )

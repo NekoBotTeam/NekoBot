@@ -4,7 +4,7 @@
 """
 
 from collections.abc import AsyncGenerator
-from typing import Optional
+from typing import Any, Optional
 
 from zhipuai import ZhipuAI
 
@@ -95,6 +95,9 @@ class ZhipuProvider(BaseLLMProvider):
         contexts: list[dict] | None = None,
         system_prompt: str | None = None,
         model: str | None = None,
+        func_tool: Any = None,
+        tool_calls_result: Any = None,
+        extra_user_content_parts: Any = None,
         **kwargs,
     ) -> LLMResponse:
         """文本对话
@@ -163,6 +166,9 @@ class ZhipuProvider(BaseLLMProvider):
         contexts: list[dict] | None = None,
         system_prompt: str | None = None,
         model: str | None = None,
+        func_tool: Any = None,
+        tool_calls_result: Any = None,
+        extra_user_content_parts: Any = None,
         **kwargs,
     ) -> AsyncGenerator[LLMResponse, None]:
         """流式文本对话
@@ -258,16 +264,20 @@ class ZhipuProvider(BaseLLMProvider):
                 "glm-3-turbo",
             ]
 
-    async def test(self, timeout: float = 45.0):
-        """测试提供商连接"""
+    async def test(self, timeout: float = 45.0, test_prompt: str | None = None) -> None:
+        """测试提供商连接
+
+        Args:
+            timeout: 超时时间（秒）
+            test_prompt: 测试提示词，如果为 None 则使用默认提示词
+
+        Raises:
+            Exception: 如果测试连接失败
+        """
         try:
-            import asyncio
-            await asyncio.wait_for(
-                self.text_chat(prompt="REPLY `PONG` ONLY"),
-                timeout=timeout,
-            )
+            await super().test(timeout=timeout, test_prompt=test_prompt)
         except Exception as e:
-            raise Exception(f"测试连接失败: {e}")
+            raise Exception(f"[ZhipuAI] 测试连接失败: {e}")
 
     async def close(self) -> None:
         """关闭提供商"""

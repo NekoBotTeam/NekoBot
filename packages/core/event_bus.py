@@ -1,6 +1,7 @@
 """事件总线系统
 
 提供解耦的事件驱动架构，支持事件的注册、分发、监听等功能
+参考 AstrBot 的事件总线实现，优化性能和可维护性
 """
 
 import asyncio
@@ -10,6 +11,7 @@ from dataclasses import dataclass
 from enum import Enum
 from loguru import logger
 import inspect
+import traceback
 
 
 class EventPriority(Enum):
@@ -39,6 +41,8 @@ class EventBus:
     - 事件优先级
     - 事件过滤
     - 一次性事件处理器
+    
+    参考 AstrBot 的 EventBus 实现
     """
 
     def __init__(self, event_queue: Optional[Queue] = None):
@@ -65,6 +69,25 @@ class EventBus:
         # 是否正在运行
         self._running = False
 
+    async def _task_wrapper(self, task: asyncio.Task) -> None:
+        """异步任务包装器，用于处理异步任务执行中出现的各种异常。
+        
+        参考 AstrBot 的 _task_wrapper 实现
+
+        Args:
+            task (asyncio.Task): 要执行的异步任务
+        """
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass  # 任务被取消，静默处理
+        except Exception as e:
+            # 获取完整的异常堆栈信息，按行分割并记录到日志中
+            logger.error(f"------- 任务 {task.get_name()} 发生错误: {e}")
+            for line in traceback.format_exc().split("\n"):
+                logger.error(f"|    {line}")
+            logger.error("-------")
+
     async def start(self):
         """启动事件总线"""
         if self._running:
@@ -72,7 +95,12 @@ class EventBus:
             return
 
         self._running = True
-        self._dispatch_task = asyncio.create_task(self._dispatch_loop())
+        # 使用任务包装器来处理分发循环中的异常
+        dispatch_task = asyncio.create_task(self._dispatch_loop(), name="event_bus_dispatch")
+        self._dispatch_task = asyncio.create_task(
+            self._task_wrapper(dispatch_task),
+            name="event_bus_wrapper"
+        )
         logger.info("事件总线已启动")
 
     async def stop(self):
@@ -303,7 +331,9 @@ class EventBus:
                 logger.debug(f"事件已处理: {event_type} -> {handler.name}")
 
             except Exception as e:
+                # 改进错误处理，记录完整堆栈
                 logger.error(f"事件处理器 {handler.name} 执行出错: {e}")
+                logger.error(traceback.format_exc())
 
     def get_listeners(self, event_type: Optional[str] = None) -> List[EventHandler]:
         """获取事件监听器列表
@@ -411,5 +441,91 @@ __all__ = [
     "on",
     "on_any",
     "emit",
-    "emit_sync"
+    "emit_sync",
+    # 新增：与 enhanced events 的兼容导出
+    "EventType",
+    "PermissionType",
+    "PermissionContext",
+    "PermissionChecker",
+    "get_permission_checker",
+    "EventHandlerRegistry",
+    "get_event_registry",
+    "on_event",
+    "on_command",
+    "EventDispatcher",
 ]
+
+
+# ============== 增强事件系统集成 ==============
+# 从 events.py 导入主要类，提供统一的 API
+
+try:
+    from .events import (
+        EventType,
+        PermissionType,
+        PermissionContext,
+        PermissionChecker,
+        get_permission_checker,
+        EventHandlerRegistry,
+        get_event_registry,
+        on_event as _on_event_enhanced,
+        on_command as _on_command_enhanced,
+        EventDispatcher,
+    )
+
+    # 提供便捷别名
+    __all__.extend([
+        "EventType",
+        "PermissionType",
+        "PermissionContext",
+        "PermissionChecker",
+        "get_permission_checker",
+        "EventHandlerRegistry",
+        "get_event_registry",
+        "EventDispatcher",
+    ])
+
+    # 增强的装饰器（带权限和优先级支持）
+    def on_event_enhanced(
+        event_type: str = EventType.ON_MESSAGE,
+        priority: int = 0,
+        permission: PermissionType = PermissionType.EVERYONE,
+        once: bool = False
+    ):
+        """增强的事件监听装饰器（支持权限和优先级）
+
+        用法:
+            @on_event_enhanced(EventType.ON_MESSAGE, priority=10, permission=PermissionType.ADMIN)
+            async def handle_message(event):
+                pass
+        """
+        return _on_event_enhanced(event_type, priority, permission, once)
+
+    def on_command_enhanced(
+        command: str,
+        priority: int = 0,
+        permission: PermissionType = PermissionType.MEMBER,
+        description: str = ""
+    ):
+        """增强的命令监听装饰器（支持权限和优先级）
+
+        用法:
+            @on_command_enhanced("help", permission=PermissionType.MEMBER)
+            async def command_help(context):
+                pass
+        """
+        return _on_command_enhanced(command, priority, permission, description)
+
+except ImportError:
+    # 如果 events.py 导入失败，提供兼容的占位符
+    logger.warning("无法导入增强事件系统，某些功能可能不可用")
+
+    def on_event_enhanced(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+
+    def on_command_enhanced(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator

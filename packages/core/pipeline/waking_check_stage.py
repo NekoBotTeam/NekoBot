@@ -30,18 +30,18 @@ class WakingCheckStage(Stage):
         self.ctx = ctx
         # 加载配置
         self.config = ctx.config
-        
+
         # 唤醒前缀配置
         self.wake_prefixes = self.config.get("wake_prefix", ["/", "."])
-        
+
         # 私聊是否需要唤醒前缀
         self.private_needs_wake_prefix = self.config.get(
             "private_message_needs_wake_prefix", False
         )
-        
+
         # 是否忽略艾特全体成员
         self.ignore_at_all = self.config.get("ignore_at_all", False)
-        
+
         # 启用唤醒检查
         self.waking_enabled = self.config.get("waking", {}).get("enabled", False)
         self.waking_prefixes = self.config.get("waking", {}).get("prefixes", [])
@@ -70,12 +70,12 @@ class WakingCheckStage(Stage):
         # 检查是否被艾特、使用唤醒前缀或私聊自动唤醒
         # 注意：这里调用 process_stage._check_if_at_me 的逻辑
         # 但由于这是独立阶段，我们需要重新实现或使用共享方法
-        
+
         # 获取消息内容
         message = event.get("message", "")
         self_id = event.get("self_id")
         message_type = event.get("message_type", "")
-        
+
         if not message or not self_id:
             # 如果没有消息或 self_id，允许通过（可能由其他阶段处理）
             return None
@@ -91,38 +91,38 @@ class WakingCheckStage(Stage):
         if isinstance(message, list):
             first_seg_is_at = False
             at_qq_first = None
-            
+
             # 首先检查是否有艾特或引用
             for i, msg_seg in enumerate(message):
                 seg_type = msg_seg.get("type", "")
                 seg_data = msg_seg.get("data", {})
-                
+
                 # 检查 at 消息段
                 if seg_type == "at":
                     at_qq = seg_data.get("qq", "")
-                    
+
                     # 记录第一个 at 消息段的 QQ 号
                     if i == 0:
                         first_seg_is_at = True
                         at_qq_first = at_qq
-                    
+
                     # 检查是否艾特全体成员
                     if str(at_qq) == "all":
                         if self.ignore_at_all:
                             continue
                         should_wake = True
                         break
-                    
+
                     # 检查是否艾特机器人
                     at_qq_formats = {
                         str(at_qq),
                         int(at_qq) if str(at_qq).isdigit() else None
                     }.difference({None})
-                    
+
                     if self_id_set & at_qq_formats:
                         should_wake = True
                         break
-                
+
                 # 检查 reply 消息段（引用消息）
                 elif seg_type == "reply":
                     reply_sender_id = seg_data.get("sender_id", "")
@@ -131,7 +131,7 @@ class WakingCheckStage(Stage):
                             str(reply_sender_id),
                             int(reply_sender_id) if str(reply_sender_id).isdigit() else None
                         }.difference({None})
-                        
+
                         if self_id_set & reply_sender_formats:
                             should_wake = True
                             break
@@ -142,7 +142,7 @@ class WakingCheckStage(Stage):
                     if msg_seg.get("type") == "text":
                         text = msg_seg.get("data", {}).get("text", "")
                         text_stripped = text.strip()
-                        
+
                         # 检查是否以唤醒前缀开头
                         for prefix in self.wake_prefixes:
                             if text_stripped.startswith(prefix):
@@ -153,7 +153,7 @@ class WakingCheckStage(Stage):
                                         break
                                 should_wake = True
                                 break
-                        
+
                         if should_wake:
                             break
 
@@ -164,13 +164,13 @@ class WakingCheckStage(Stage):
         elif isinstance(message, str):
             # 纯字符串消息（兼容性处理）
             text_stripped = message.strip()
-            
+
             # 检查是否以唤醒前缀开头
             for prefix in self.wake_prefixes:
                 if text_stripped.startswith(prefix):
                     should_wake = True
                     break
-            
+
             # 检查私聊消息
             if not should_wake and message_type == "private" and not self.private_needs_wake_prefix:
                 should_wake = True

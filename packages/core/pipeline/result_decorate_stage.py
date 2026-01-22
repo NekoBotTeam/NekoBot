@@ -4,7 +4,6 @@
 """
 
 from typing import AsyncGenerator, Optional
-from loguru import logger
 
 from .stage import Stage, register_stage
 from .context import PipelineContext

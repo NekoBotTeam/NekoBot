@@ -8,7 +8,8 @@ from loguru import logger
 import sys
 import os
 
-from .core.config import load_config
+from .config import load_config, get_config_manager
+from .core.utils import get_nekobot_dist_path
 
 # 配置日志
 logger.remove()
@@ -22,8 +23,9 @@ logger.add(
 # 创建 Quart 应用实例
 app = Quart(__name__)
 
-# 加载配置
-CONFIG = load_config()
+# 使用配置管理器
+config_manager_obj = get_config_manager()
+CONFIG = load_config()  # 保持向后兼容
 
 # 配置 CORS，使用配置文件中的设置
 cors_config = CONFIG.get("cors", {})
@@ -31,16 +33,13 @@ app = cors(
     app,
     allow_origin=cors_config.get("allow_origin", "*"),
     allow_headers=cors_config.get("allow_headers", ["Content-Type", "Authorization"]),
-    allow_methods=cors_config.get("allow_methods", ["GET", "POST", "PUT", "DELETE", "OPTIONS"]),
+    allow_methods=cors_config.get(
+        "allow_methods", ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    ),
 )
 
-# 获取项目根目录
-# 从当前文件位置计算项目根目录
-CURRENT_FILE = os.path.abspath(__file__)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_FILE))
-
-# 静态文件目录
-STATIC_DIR = os.path.join(PROJECT_ROOT, "data", "dist")
+# 使用统一的路径管理
+STATIC_DIR = get_nekobot_dist_path()
 
 # 应用配置
 app.config.from_mapping(
@@ -62,7 +61,7 @@ from .provider.dynamic_register import dynamic_register_manager
 
 # 导入新架构组件
 from .conversation import ConversationManager
-from .config import config as config_manager
+from .config import config as old_config_manager
 from .agent import AgentExecutor
 from .pipeline import PipelineScheduler, PipelineContext
 
@@ -70,6 +69,10 @@ from .pipeline import PipelineScheduler, PipelineContext
 from .core.hot_reload_manager import HotReloadManager
 from .core.config_reload_manager import config_reload_manager
 from .routes.dynamic_route_manager import DynamicRouteManager
+from .core import get_config_manager
+
+# 使用新的配置管理器
+config_manager_obj = get_config_manager()
 
 # 动态注册LLM提供商和平台适配器（保持同步）
 logger.info("开始动态注册组件...")
@@ -100,6 +103,7 @@ from .routes.config_profile_route import ConfigProfileRoute
 from .routes.backup_route import BackupRoute
 from .routes.knowledge_base_route import KnowledgeBaseRoute
 from .routes.long_term_memory_route import LongTermMemoryRoute
+
 # 新架构组件路由
 from .routes.agent_route import AgentRoute
 from .routes.pipeline_route import PipelineRoute
@@ -114,7 +118,8 @@ app.plugins = {
     "event_queue": event_queue,
     # 新架构组件
     "conversation_manager": ConversationManager(),
-    "config_manager": config_manager,
+    "config_manager": old_config_manager,  # 使用旧的配置管理器保持兼容
+    "config_manager_obj": config_manager_obj,  # 新的配置管理器
     "agent_executor": AgentExecutor(),
 }
 
@@ -123,7 +128,7 @@ hot_reload_manager = HotReloadManager(
     plugin_dir=Path("data/plugins"),
     config_dir=Path("data/config"),
     plugin_reload_callback=plugin_manager.reload_plugin,
-    config_reload_callback=config_reload_manager.reload_config
+    config_reload_callback=config_reload_manager.reload_config,
 )
 app.plugins["hot_reload_manager"] = hot_reload_manager
 
@@ -137,7 +142,7 @@ pipeline_context = PipelineContext(
     platform_manager=platform_manager,
     plugin_manager=plugin_manager,
     conversation_manager=app.plugins["conversation_manager"],
-    config_manager=config_manager,
+    config_manager=old_config_manager,
     event_bus=event_queue,  # event_queue 作为事件总线
     metadata={},
 )
@@ -214,7 +219,7 @@ for route_class in [
     config_editor_route,
 ]:
     for path, method, handler in route_class.routes:
-        endpoint = getattr(handler.__func__, 'endpoint_name', handler.__name__)
+        endpoint = getattr(handler.__func__, "endpoint_name", handler.__name__)
         app.add_url_rule(path, endpoint=endpoint, view_func=handler, methods=[method])
 
 
@@ -222,7 +227,7 @@ for route_class in [
 @app.before_request
 async def before_request():
     """请求前钩子，验证JWT令牌"""
-        # 排除不需要认证的路径
+    # 排除不需要认证的路径
     excluded_paths = [
         "/health",
         "/api/login",
@@ -513,7 +518,8 @@ async def get_stats():
     memory_usage = memory.percent
 
     # 获取平台消息统计
-    platform_stats = platform_manager.get_all_stats()
+    platform_stats_result = platform_manager.get_all_stats()
+    platform_stats = platform_stats_result.get("platforms", [])
     message_stats = []
 
     for stat in platform_stats:
@@ -569,7 +575,7 @@ async def run_app():
     await start_core_server()
 
     # 加载配置管理器数据
-    await config_manager.load()
+    await config_manager_obj.load()
     logger.info("配置管理器已加载")
 
     # 加载会话管理器数据

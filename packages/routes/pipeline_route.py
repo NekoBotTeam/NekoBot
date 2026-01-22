@@ -3,19 +3,15 @@
 提供 Pipeline 流程管理、执行状态、配置管理和任务调度功能
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from datetime import datetime
 from loguru import logger
 from quart import request
 
 from .route import Route, Response, RouteContext
-from ..pipeline.scheduler_new import (
-    BaseStage,
-    SimpleStage,
+from ..pipeline.scheduler import (
     PipelineScheduler,
     PipelineContext,
-    StagePriority,
-    register_stage,
 )
 
 
@@ -44,7 +40,9 @@ class PipelineRoute(Route):
             handler.__func__.endpoint_name = f"pipeline_{handler.__name__}"
 
         # 获取 Pipeline 调度器
-        self.scheduler: Optional[PipelineScheduler] = context.app.plugins.get("pipeline_scheduler")
+        self.scheduler: Optional[PipelineScheduler] = context.app.plugins.get(
+            "pipeline_scheduler"
+        )
 
     async def list_pipelines(self) -> Dict[str, Any]:
         """列出所有 Pipeline
@@ -63,7 +61,14 @@ class PipelineRoute(Route):
             page_size = int(request.args.get("page_size", 10))
 
             if not self.scheduler:
-                return Response().ok(data={"pipelines": [], "total": 0}, message="Pipeline 调度器未初始化").to_dict()
+                return (
+                    Response()
+                    .ok(
+                        data={"pipelines": [], "total": 0},
+                        message="Pipeline 调度器未初始化",
+                    )
+                    .to_dict()
+                )
 
             # 获取所有 Pipeline
             pipelines = []
@@ -71,9 +76,15 @@ class PipelineRoute(Route):
                 pipeline_info = {
                     "id": pipeline_id,
                     "name": pipeline.__class__.__name__,
-                    "priority": pipeline.priority.value if hasattr(pipeline, "priority") else "normal",
-                    "enabled": pipeline._enabled if hasattr(pipeline, "_enabled") else True,
-                    "stages_count": len(pipeline._stages) if hasattr(pipeline, "_stages") else 0,
+                    "priority": pipeline.priority.value
+                    if hasattr(pipeline, "priority")
+                    else "normal",
+                    "enabled": pipeline._enabled
+                    if hasattr(pipeline, "_enabled")
+                    else True,
+                    "stages_count": len(pipeline._stages)
+                    if hasattr(pipeline, "_stages")
+                    else 0,
                 }
 
                 # 状态过滤
@@ -91,15 +102,19 @@ class PipelineRoute(Route):
             end = start + page_size
             paged_pipelines = pipelines[start:end]
 
-            return Response().ok(
-                data={
-                    "pipelines": paged_pipelines,
-                    "total": total,
-                    "page": page,
-                    "page_size": page_size
-                },
-                message="获取 Pipeline 列表成功"
-            ).to_dict()
+            return (
+                Response()
+                .ok(
+                    data={
+                        "pipelines": paged_pipelines,
+                        "total": total,
+                        "page": page,
+                        "page_size": page_size,
+                    },
+                    message="获取 Pipeline 列表成功",
+                )
+                .to_dict()
+            )
 
         except Exception as e:
             logger.error(f"获取 Pipeline 列表失败: {e}", exc_info=True)
@@ -130,16 +145,24 @@ class PipelineRoute(Route):
             stages = []
             if hasattr(pipeline, "_stages"):
                 for stage in pipeline._stages:
-                    stages.append({
-                        "name": stage.__class__.__name__,
-                        "priority": stage.priority.value if hasattr(stage, "priority") else "normal",
-                        "enabled": stage._enabled if hasattr(stage, "_enabled") else True,
-                    })
+                    stages.append(
+                        {
+                            "name": stage.__class__.__name__,
+                            "priority": stage.priority.value
+                            if hasattr(stage, "priority")
+                            else "normal",
+                            "enabled": stage._enabled
+                            if hasattr(stage, "_enabled")
+                            else True,
+                        }
+                    )
 
             info = {
                 "id": pipeline_id,
                 "name": pipeline.__class__.__name__,
-                "priority": pipeline.priority.value if hasattr(pipeline, "priority") else "normal",
+                "priority": pipeline.priority.value
+                if hasattr(pipeline, "priority")
+                else "normal",
                 "enabled": pipeline._enabled if hasattr(pipeline, "_enabled") else True,
                 "stages": stages,
                 "stages_count": len(stages),
@@ -180,10 +203,11 @@ class PipelineRoute(Route):
             # 这里简化处理，实际应该根据配置创建 Pipeline
             logger.info(f"创建 Pipeline: {pipeline_id}, 优先级: {priority}")
 
-            return Response().ok(
-                data={"pipeline_id": pipeline_id},
-                message="创建 Pipeline 成功"
-            ).to_dict()
+            return (
+                Response()
+                .ok(data={"pipeline_id": pipeline_id}, message="创建 Pipeline 成功")
+                .to_dict()
+            )
 
         except Exception as e:
             logger.error(f"创建 Pipeline 失败: {e}", exc_info=True)
@@ -250,10 +274,14 @@ class PipelineRoute(Route):
 
             logger.info(f"执行 Pipeline: {pipeline_id}")
 
-            return Response().ok(
-                data={"pipeline_id": pipeline_id, "status": "executing"},
-                message="Pipeline 执行成功"
-            ).to_dict()
+            return (
+                Response()
+                .ok(
+                    data={"pipeline_id": pipeline_id, "status": "executing"},
+                    message="Pipeline 执行成功",
+                )
+                .to_dict()
+            )
 
         except Exception as e:
             logger.error(f"执行 Pipeline 失败: {e}", exc_info=True)
@@ -289,7 +317,9 @@ class PipelineRoute(Route):
                 "execution_count": getattr(pipeline, "_execution_count", 0),
             }
 
-            return Response().ok(data=status, message="获取 Pipeline 状态成功").to_dict()
+            return (
+                Response().ok(data=status, message="获取 Pipeline 状态成功").to_dict()
+            )
 
         except Exception as e:
             logger.error(f"获取 Pipeline 状态失败: {e}", exc_info=True)
@@ -319,14 +349,24 @@ class PipelineRoute(Route):
             stages = []
             if hasattr(pipeline, "_stages"):
                 for i, stage in enumerate(pipeline._stages):
-                    stages.append({
-                        "index": i,
-                        "name": stage.__class__.__name__,
-                        "priority": stage.priority.value if hasattr(stage, "priority") else "normal",
-                        "enabled": stage._enabled if hasattr(stage, "_enabled") else True,
-                    })
+                    stages.append(
+                        {
+                            "index": i,
+                            "name": stage.__class__.__name__,
+                            "priority": stage.priority.value
+                            if hasattr(stage, "priority")
+                            else "normal",
+                            "enabled": stage._enabled
+                            if hasattr(stage, "_enabled")
+                            else True,
+                        }
+                    )
 
-            return Response().ok(data={"stages": stages}, message="获取阶段列表成功").to_dict()
+            return (
+                Response()
+                .ok(data={"stages": stages}, message="获取阶段列表成功")
+                .to_dict()
+            )
 
         except Exception as e:
             logger.error(f"获取阶段列表失败: {e}", exc_info=True)
@@ -416,12 +456,16 @@ class PipelineRoute(Route):
             config = {
                 "id": pipeline_id,
                 "name": pipeline.__class__.__name__,
-                "priority": pipeline.priority.value if hasattr(pipeline, "priority") else "normal",
+                "priority": pipeline.priority.value
+                if hasattr(pipeline, "priority")
+                else "normal",
                 "enabled": pipeline._enabled if hasattr(pipeline, "_enabled") else True,
                 "config": getattr(pipeline, "config", {}),
             }
 
-            return Response().ok(data=config, message="获取 Pipeline 配置成功").to_dict()
+            return (
+                Response().ok(data=config, message="获取 Pipeline 配置成功").to_dict()
+            )
 
         except Exception as e:
             logger.error(f"获取 Pipeline 配置失败: {e}", exc_info=True)
@@ -486,10 +530,14 @@ class PipelineRoute(Route):
             # 从数据库或内存获取任务列表
             tasks = []
 
-            return Response().ok(
-                data={"tasks": tasks, "count": len(tasks)},
-                message="获取任务列表成功"
-            ).to_dict()
+            return (
+                Response()
+                .ok(
+                    data={"tasks": tasks, "count": len(tasks)},
+                    message="获取任务列表成功",
+                )
+                .to_dict()
+            )
 
         except Exception as e:
             logger.error(f"获取任务列表失败: {e}", exc_info=True)

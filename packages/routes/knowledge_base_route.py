@@ -3,10 +3,10 @@
 提供知识库的创建、查询、管理和文档操作功能
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime
 from loguru import logger
-from quart import request, send_file
+from quart import send_file
 
 from .route import Route, Response, RouteContext
 from ..core.knowledge_base.kb_manager import get_kb_manager
@@ -38,11 +38,11 @@ class KnowledgeBaseRoute(Route):
         try:
             knowledge_bases = await self.kb_manager.list_knowledge_bases()
             result = []
-            
+
             for kb in knowledge_bases:
                 # 获取文档数量
                 doc_count = await self.kb_manager.get_document_count(kb.id)
-                
+
                 result.append({
                     "id": kb.id,
                     "name": kb.name,
@@ -335,8 +335,8 @@ class KnowledgeBaseRoute(Route):
             # 创建临时文件
             import tempfile
             import json
-            
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
                 json.dump(export_data, f, indent=2, ensure_ascii=False)
                 temp_path = f.name
 
@@ -350,7 +350,7 @@ class KnowledgeBaseRoute(Route):
                 temp_path,
                 as_attachment=True,
                 download_name=f"knowledge_base_{kb_id}.json",
-                mimetype='application/json'
+                mimetype="application/json"
             )
         except Exception as e:
             logger.error(f"导出知识库失败: {e}")
@@ -371,7 +371,7 @@ class KnowledgeBaseRoute(Route):
             username = "unknown"
             try:
                 from quart import g
-                if hasattr(g, 'user') and g.user:
+                if hasattr(g, "user") and g.user:
                     username = g.user.username
             except Exception:
                 pass

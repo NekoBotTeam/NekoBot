@@ -3,14 +3,11 @@
 支持 JSON Schema 验证的工具定义和管理
 """
 
-from abc import ABC, abstractmethod
 from typing import Any, Callable, Awaitable, AsyncGenerator
-from collections.abc import Coroutine
 from dataclasses import dataclass, field
-from enum import Enum
 import jsonschema
 
-from ..types import T_Context, MessageEventResult, StreamResponse
+from ..types import T_Context, MessageEventResult
 
 
 # ============== 工具 Schema ==============
@@ -107,7 +104,7 @@ class FunctionTool(ToolSchema):
 
         result = self.handler(context, **kwargs)
 
-        if hasattr(result, '__aiter__'):
+        if hasattr(result, "__aiter__"):
             # 异步生成器，直接返回
             return result
         else:

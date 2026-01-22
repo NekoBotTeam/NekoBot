@@ -32,6 +32,10 @@ class StatRoute(Route):
 
     def _is_cache_valid(self, cache: Dict[str, Any]) -> bool:
         """检查缓存是否有效"""
+        # 检查cache是否为字典且包含必要字段
+        if not isinstance(cache, dict):
+            return False
+
         if not cache.get("cached_at"):
             return False
 
@@ -138,9 +142,7 @@ class StatRoute(Route):
             # 获取主要磁盘的使用率
             try:
                 disk = psutil.disk_usage("/")
-                resource_usage["disk_usage"] = round(
-                    (disk.used / disk.total) * 100, 1
-                )
+                resource_usage["disk_usage"] = round((disk.used / disk.total) * 100, 1)
             except Exception:
                 pass
 
@@ -203,9 +205,11 @@ class StatRoute(Route):
                 cache = self._load_stats_cache()
                 if self._is_cache_valid(cache):
                     logger.debug("使用缓存的统计数据")
-                    return Response().ok(
-                        data=cache["data"], message="获取统计数据成功（缓存）"
-                    ).to_dict()
+                    return (
+                        Response()
+                        .ok(data=cache["data"], message="获取统计数据成功（缓存）")
+                        .to_dict()
+                    )
 
             # 获取插件管理器
             plugin_manager = self.context.app.plugins.get("plugin_manager")
@@ -233,19 +237,24 @@ class StatRoute(Route):
             message_stats = []
             total_messages = 0
             if platform_manager:
-                platform_stats = platform_manager.get_all_stats()
+                platform_stats_data = platform_manager.get_all_stats()
+                platform_stats = platform_stats_data.get("platforms", [])
                 for stat in platform_stats:
                     messages = stat.get("messages", 0)
                     total_messages += messages
                     message_stats.append(
                         {
-                            "platform": stat.get("display_name", stat.get("type", "Unknown")),
+                            "platform": stat.get(
+                                "display_name", stat.get("type", "Unknown")
+                            ),
                             "messages": messages,
                         }
                     )
 
             # 计算用户活跃度（从数据库获取真实数据）
-            user_activity = await self._get_user_activity_stats(db_manager, start_dt, end_dt)
+            user_activity = await self._get_user_activity_stats(
+                db_manager, start_dt, end_dt
+            )
 
             # 计算资源使用率（尝试使用 psutil 获取真实数据）
             resource_usage = await self._get_resource_usage()
@@ -325,7 +334,9 @@ class StatRoute(Route):
                 "migrations": {
                     "total": len(migrations),
                     "applied": len([m for m in migrations if m.get("applied", False)]),
-                    "pending": len([m for m in migrations if not m.get("applied", False)]),
+                    "pending": len(
+                        [m for m in migrations if not m.get("applied", False)]
+                    ),
                     "last_migration": last_migration,
                     "list": migrations,
                 },
@@ -337,7 +348,9 @@ class StatRoute(Route):
                 "last_updated": datetime.utcnow().isoformat(),
             }
 
-            return Response().ok(data=version_info, message="获取版本信息成功").to_dict()
+            return (
+                Response().ok(data=version_info, message="获取版本信息成功").to_dict()
+            )
 
         except Exception as e:
             logger.error(f"获取版本信息失败: {e}", exc_info=True)
