@@ -12,9 +12,7 @@ import aiohttp
 
 
 # 项目根目录
-PROJECT_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..")
-)
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # 目录路径
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
@@ -26,7 +24,7 @@ DIST_ZIP_PATH = os.path.join(TEMP_DIR, "dist.zip")
 VERSION_FILE = os.path.join(DIST_DIR, "version")
 
 # 仓库配置
-DASHBOARD_REPO = "NekoBotTeam/Nekobot-Dashboard"
+DASHBOARD_REPO = "OfficialNekoTeam/Nekobot-Dashboard"
 
 # GitHub 代理列表
 GITHUB_PROXIES = [
@@ -43,7 +41,9 @@ DIRECT_CONNECT = "direct"
 class WebUIManager:
     """WebUI 管理器"""
 
-    def __init__(self, custom_proxy: Optional[str] = None, version: Optional[str] = None):
+    def __init__(
+        self, custom_proxy: Optional[str] = None, version: Optional[str] = None
+    ):
         self.custom_proxy = custom_proxy
         self.version = version
         self.session = aiohttp.ClientSession()
@@ -68,7 +68,11 @@ class WebUIManager:
         urls = []
 
         # 添加自定义代理
-        if self.custom_proxy and self.custom_proxy not in GITHUB_PROXIES and self.custom_proxy != DIRECT_CONNECT:
+        if (
+            self.custom_proxy
+            and self.custom_proxy not in GITHUB_PROXIES
+            and self.custom_proxy != DIRECT_CONNECT
+        ):
             urls.append(f"{self.custom_proxy}/{base_url}{download_path}")
 
         # 添加 GitHub 代理
@@ -280,7 +284,9 @@ class WebUIManager:
         return success
 
 
-async def initialize_webui(custom_proxy: Optional[str] = None, version: Optional[str] = None) -> bool:
+async def initialize_webui(
+    custom_proxy: Optional[str] = None, version: Optional[str] = None
+) -> bool:
     """初始化 WebUI
 
     Args:
@@ -297,7 +303,9 @@ async def initialize_webui(custom_proxy: Optional[str] = None, version: Optional
         await manager.close()
 
 
-async def update_webui(custom_proxy: Optional[str] = None, version: Optional[str] = None) -> bool:
+async def update_webui(
+    custom_proxy: Optional[str] = None, version: Optional[str] = None
+) -> bool:
     """更新 WebUI
 
     Args:

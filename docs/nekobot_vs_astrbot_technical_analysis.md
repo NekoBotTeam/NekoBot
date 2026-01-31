@@ -3,7 +3,7 @@
 > **生成日期**: 2026-01-04
 > **分析基准**: 源码级别对比，基于实际代码而非文档推测
 > **对比版本**:
-> - NekoBot: main 分支 (C:\Users\churanneko\Documents\Project\NekoBotTeam\nekobot)
+> - NekoBot: main 分支 (C:\Users\churanneko\Documents\Project\OfficialNekoTeam\nekobot)
 > - AstrBot: main 分支 (C:\Users\churanneko\Desktop\example\AstrBot)
 
 ---

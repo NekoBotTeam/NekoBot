@@ -6,7 +6,7 @@
 
 (目前项目正在处于初始阶段，因此版本号在发布正式版本之前一直为 1.0.0，有问题请及时反馈至Issue)
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/NekoBotTeam/NekoBot)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/OfficialNekoTeam/NekoBot)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL-3.0-orange.svg)](LICENSE)
 
@@ -54,7 +54,7 @@
 
 1. 克隆仓库
 ```bash
-git clone https://github.com/NekoBotTeam/NekoBot.git
+git clone https://github.com/OfficialNekoTeam/NekoBot.git
 cd NekoBot
 ```
 
@@ -104,7 +104,7 @@ python main.py
 
 ## 项目结构
 
-前端项目已移至独立仓库：[NekoBot-Dashboard](https://github.com/NekoBotTeam/NekoBot-Dashboard)，基于 [Breey](https://github.com/codedthemes/berry-free-react-admin-template) 模板开发。
+前端项目已移至独立仓库：[NekoBot-Dashboard](https://github.com/OfficialNekoTeam/Nekobot-Dashboard)，基于 [Breey](https://github.com/codedthemes/berry-free-react-admin-template) 模板开发。
 
 ```
 NekoBot/
@@ -332,7 +332,7 @@ uv run main.py reset-password
 
 ## 插件开发
 
-想要开发插件? 请参考项目[https://github.com/NekoBotTeam/NekoBot_Plugins_Example](https://github.com/NekoBotTeam/NekoBot_Plugins_Example)
+想要开发插件? 请参考项目[https://github.com/OfficialNekoTeam/nekobot_plugin_template](https://github.com/OfficialNekoTeam/nekobot_plugin_template)
 
 ---
 
@@ -482,7 +482,7 @@ python main.py reset-password
 
 ## 联系方式
 
-- GitHub Issues: [提交问题Issue](https://github.com/NekoBotTeam/NekoBot/issues)
+- GitHub Issues: [提交问题Issue](https://github.com/OfficialNekoTeam/NekoBot/issues)
 
 ---
 
@@ -490,5 +490,5 @@ python main.py reset-password
 
 **如果这个项目对你有帮助，请给个 Star ⭐**
 
-Made with ❤️ by NekoBotTeam
+Made with ❤️ by OfficialNekoTeam
 </div>

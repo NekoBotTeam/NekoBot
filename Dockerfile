@@ -31,7 +31,7 @@ COPY . .
 RUN mkdir -p /app/data/
 
 # 下载构建后的前端构建文件
-RUN curl -L -o /app/dist.zip http://github.com/NekoBotTeam/Nekobot-Dashboard/releases/latest/download/dist.zip && \
+RUN curl -L -o /app/dist.zip http://github.com/OfficialNekoTeam/Nekobot-Dashboard/releases/latest/download/dist.zip && \
     unzip -o /app/dist.zip -d /app && \
     rm /app/dist.zip
 

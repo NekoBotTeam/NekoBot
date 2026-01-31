@@ -85,8 +85,8 @@ NekoBot - 一个支持多聊天平台大模型的聊天机器人框架
     python main.py version
     uv run main.py
 
-更多信息:
-    https://github.com/NekoBotTeam/NekoBot
+ 更多信息:
+     https://github.com/OfficialNekoTeam/NekoBot
 """
     print(help_text)
     return 0
@@ -94,19 +94,19 @@ NekoBot - 一个支持多聊天平台大模型的聊天机器人框架
 
 async def check_env():
     """检查并初始化环境
-    
+
     参考 AstrBot 的 check_env() 实现
     """
     import mimetypes
-    
+
     # 检查 Python 版本
     if not (sys.version_info.major == 3 and sys.version_info.minor >= 10):
         logger.error("请使用 Python3.10+ 运行本项目。")
         sys.exit(1)
-    
+
     # 确保必要的目录存在
     ensure_directories()
-    
+
     # 针对问题 #181 的临时解决方案（参考 AstrBot）
     mimetypes.add_type("text/javascript", ".js")
     mimetypes.add_type("text/javascript", ".mjs")
@@ -117,7 +117,7 @@ async def main():
     """主函数：启动 NekoBot 服务器或执行命令行操作"""
     # 检查环境
     await check_env()
-    
+
     # 解析命令行参数
     parser = argparse.ArgumentParser(
         description="NekoBot 命令行工具",
@@ -125,22 +125,16 @@ async def main():
         allow_abbrev=False,
     )
     parser.add_argument(
-        "-h", "--help",
-        action="store_true",
-        dest="show_help",
-        help="显示帮助信息"
+        "-h", "--help", action="store_true", dest="show_help", help="显示帮助信息"
     )
     parser.add_argument(
-        "-v", "--version",
-        action="store_true",
-        dest="show_version",
-        help="显示版本信息"
+        "-v", "--version", action="store_true", dest="show_version", help="显示版本信息"
     )
     parser.add_argument(
         "command",
         nargs="?",
         choices=["reset-password", "version", "help"],
-        help="要执行的命令"
+        help="要执行的命令",
     )
 
     args = parser.parse_args()
