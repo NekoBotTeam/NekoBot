@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from aiohttp import WSMsgType, web
+from loguru import logger
 
 from .types import ValueMap
 
@@ -49,6 +50,12 @@ class OneBotV11Transport:
         await self._runner.setup()
         self._site = web.TCPSite(self._runner, self.config.host, self.config.port)
         await self._site.start()
+        logger.info(
+            "OneBot v11 transport listening on ws://{}:{}{}",
+            self.config.host,
+            self.config.port,
+            self.config.path,
+        )
 
     async def stop(self) -> None:
         for client in list(self._clients):
@@ -66,6 +73,7 @@ class OneBotV11Transport:
         if self._runner is not None:
             await self._runner.cleanup()
             self._runner = None
+        logger.info("OneBot v11 transport stopped")
 
     async def call_api(
         self,
@@ -85,6 +93,7 @@ class OneBotV11Transport:
         loop = asyncio.get_running_loop()
         future: asyncio.Future[dict[str, object]] = loop.create_future()
         self._pending_actions[echo] = future
+        logger.debug("OneBot action send: action={} echo={}", action, echo)
         await self._clients[0].send_json(payload)
         try:
             return await future
@@ -94,6 +103,9 @@ class OneBotV11Transport:
     async def _handle_websocket(self, request: web.Request) -> web.StreamResponse:
         if self.config.access_token:
             token = request.query.get("access_token", "")
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[len("Bearer ") :]
             if token != self.config.access_token:
                 return web.Response(
                     status=401, text="Unauthorized: Invalid access_token"
@@ -102,18 +114,27 @@ class OneBotV11Transport:
         websocket = web.WebSocketResponse()
         _ = await websocket.prepare(request)
         self._clients.append(websocket)
+        client_addr = request.remote or "unknown"
+        n = len(self._clients)
+        logger.info("[OneBot] 客户端已连接: {} (当前连接数: {})", client_addr, n)
         try:
             async for message in websocket:
                 if message.type == WSMsgType.TEXT:
                     await self._handle_text_frame(cast(str, message.data))
                 elif message.type == WSMsgType.ERROR:
+                    logger.warning("[OneBot] WebSocket 错误: {}", websocket.exception())
                     break
+        except Exception as exc:
+            logger.error("[OneBot] 处理客户端时出错: {}", exc)
         finally:
             if websocket in self._clients:
                 _ = self._clients.remove(websocket)
+            n = len(self._clients)
+            logger.info("[OneBot] 客户端已断开: {} (当前连接数: {})", client_addr, n)
         return websocket
 
     async def _handle_text_frame(self, payload: str) -> None:
+        logger.debug("OneBot raw websocket payload: {}", payload)
         raw = cast(object, json.loads(payload))
         if not isinstance(raw, dict):
             return
@@ -124,11 +145,28 @@ class OneBotV11Transport:
         }
 
         if self._is_action_response(data):
+            logger.debug("OneBot action response received: echo={}", data.get("echo"))
             self._resolve_action_response(data)
             return
 
         if self.raw_event_handler is not None:
-            await self.raw_event_handler(data)
+            logger.debug(
+                (
+                    "OneBot event payload received: post_type=%s message_type=%s "
+                    + "notice_type=%s request_type=%s meta_event_type=%s"
+                ),
+                data.get("post_type"),
+                data.get("message_type"),
+                data.get("notice_type"),
+                data.get("request_type"),
+                data.get("meta_event_type"),
+            )
+            task = asyncio.create_task(self.raw_event_handler(data))
+            task.add_done_callback(self._on_event_task_done)
+
+    def _on_event_task_done(self, task: asyncio.Task[None]) -> None:
+        if not task.cancelled() and task.exception() is not None:
+            logger.error("[OneBot] 事件处理异常: {}", task.exception())
 
     def _is_action_response(self, payload: ValueMap) -> bool:
         return "echo" in payload and ("status" in payload or "retcode" in payload)

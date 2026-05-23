@@ -57,6 +57,9 @@ class NekoBotFramework:
             runtime_registry=self.runtime_registry,
             schema_registry=self.schema_registry,
         )
+        # 权限引擎和 owner ID 集合，由 bootstrap 注入
+        self.permission_engine: PermissionEngine | None = None
+        self.owner_ids: frozenset[str] = frozenset()
 
     def register_schema(self, name: str, schema: ObjectSchema) -> None:
         self.runtime_registry.register_schema(name, schema)
@@ -320,7 +323,7 @@ class NekoBotFramework:
         permission_engine = (
             permission_engine_value
             if isinstance(permission_engine_value, PermissionEngine)
-            else None
+            else self.permission_engine  # 使用 framework 级别的默认引擎
         )
         reply_callable_value = kwargs.get("reply_callable")
         reply_callable = (
@@ -369,6 +372,8 @@ class NekoBotFramework:
             permission_callable=(
                 permission_callable or runtime_context.DEFAULT_PERMISSION_CALLABLE
             ),
+            save_conversation_callable=self.save_conversation_context,
+            load_conversation_callable=self.conversation_store.get_conversation,
             permission_engine=permission_engine,
             resource_kind=resource_kind,
         )

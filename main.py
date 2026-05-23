@@ -1,21 +1,28 @@
 from __future__ import annotations
 
 import asyncio
-import logging
-from pathlib import Path
+import sys
+
+from loguru import logger
 
 from packages.bootstrap import BootstrappedRuntime, bootstrap_runtime, load_app_config
 
 
 def _configure_logging() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    logger.remove()
+    logger.add(
+        sys.stdout,
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> "
+            "<level>[{level}]</level> {message}"
+        ),
+        level="INFO",
+        colorize=True,
     )
 
 
 async def async_main(
-    config_path: str | Path | None = None,
+    config_path: str | None = None,
     *,
     run_forever: bool = True,
 ) -> BootstrappedRuntime:
@@ -24,6 +31,8 @@ async def async_main(
     if run_forever and runtime.running_platforms:
         try:
             _ = await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            pass
         finally:
             _ = await runtime.stop()
 
@@ -32,7 +41,10 @@ async def async_main(
 
 def main() -> None:
     _configure_logging()
-    _ = asyncio.run(async_main())
+    try:
+        _ = asyncio.run(async_main())
+    except KeyboardInterrupt:
+        logger.info("收到退出信号，正在关闭...")
 
 
 if __name__ == "__main__":
