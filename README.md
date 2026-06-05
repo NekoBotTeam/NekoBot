@@ -6,7 +6,7 @@
 
 (目前项目正在处于初始阶段，因此版本号在发布正式版本之前一直为 1.0.0，有问题请及时反馈至Issue)
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Carillen/NekoBot)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Ringaire/NekoBot)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-AGPL-3.0-orange.svg)](LICENSE)
 
@@ -59,7 +59,7 @@
 
 1. 克隆仓库
 ```bash
-git clone https://github.com/Carillen/NekoBot.git
+git clone https://github.com/Ringaire/NekoBot.git
 cd NekoBot
 ```
 
@@ -153,7 +153,7 @@ uv run main.py reset-password
 
 ## 插件开发
 
-想要开发插件? 请参考项目[https://github.com/Carillen/nekobot_plugin_template](https://github.com/Carillen/nekobot_plugin_template)
+想要开发插件? 请参考项目[https://github.com/Ringaire/nekobot_plugin_template](https://github.com/Ringaire/nekobot_plugin_template)
 
 ---
 
@@ -279,7 +279,7 @@ python main.py reset-password
 
 ## 联系方式
 
-- [提交问题Issue](https://github.com/Carillen/NekoBot/issues)
+- [提交问题Issue](https://github.com/Ringaire/NekoBot/issues)
 - [更多联系方式请看文档底部](https://docs.nekobot.dev/)
 
 ---
@@ -287,15 +287,15 @@ python main.py reset-password
 <div align="center">
 
 ## ⭐ Star 历史
-<a href="https://www.star-history.com/?repos=Carillen%2FNekoBot&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=Ringaire%2FNekoBot&type=date&legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Carillen/NekoBot&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=Carillen/NekoBot&type=date&theme=light&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/image?repos=Carillen/NekoBot&type=date&legend=top-left" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Ringaire/NekoBot&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=Ringaire/NekoBot&type=date&theme=light&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/image?repos=Ringaire/NekoBot&type=date&legend=top-left" />
   </picture>
 </a>
 
 **如果这个项目对你有帮助，请给个 Star ⭐**
 
-Made with ❤️ by Carillen
+Made with ❤️ by Ringaire
 </div>
