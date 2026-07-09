@@ -51,7 +51,11 @@ class FakeChatProvider(ChatProvider):
 
     @override
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
-        return ProviderResponse(content=f"echo:{request.prompt or ''}")
+        last_user = next(
+            (m.content for m in reversed(request.messages) if m.role == "user"),
+            request.prompt or "",
+        )
+        return ProviderResponse(content=f"echo:{last_user}")
 
 
 async def test_bootstrap_runtime_starts_and_stops_platforms() -> None:

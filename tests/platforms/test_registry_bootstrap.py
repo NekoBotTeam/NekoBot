@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TypeAlias, cast
 
 from packages.app import NekoBotFramework
-from packages.platforms.bootstrap import PlatformBootstrap
+from packages.platforms.manager import PlatformManager
 from packages.platforms.registry import PlatformRegistry
 
 ValueMap: TypeAlias = dict[str, object]
@@ -38,7 +38,7 @@ def test_platform_registry_registers_and_lists_types() -> None:
     assert registry.list_types() == ("fake",)
 
 
-async def test_platform_bootstrap_starts_enabled_instances() -> None:
+async def test_platform_manager_starts_enabled_instances() -> None:
     framework = NekoBotFramework()
     registry = PlatformRegistry()
     registry.register(
@@ -46,9 +46,9 @@ async def test_platform_bootstrap_starts_enabled_instances() -> None:
         module_path="tests.platforms.test_registry_bootstrap",
         factory_name="create_fake_adapter",
     )
-    bootstrap = PlatformBootstrap(framework, registry=registry)
+    manager = PlatformManager(framework, registry=registry)
 
-    instances = await bootstrap.start_platforms(
+    instances = await manager.start_platforms(
         [
             {"type": "fake", "instance_uuid": "instance-a", "enabled": True},
             {"type": "fake", "instance_uuid": "instance-b", "enabled": False},
@@ -61,7 +61,7 @@ async def test_platform_bootstrap_starts_enabled_instances() -> None:
     assert adapter.started is True
 
 
-async def test_platform_bootstrap_stops_running_instances() -> None:
+async def test_platform_manager_stops_running_instances() -> None:
     framework = NekoBotFramework()
     registry = PlatformRegistry()
     registry.register(
@@ -69,13 +69,13 @@ async def test_platform_bootstrap_stops_running_instances() -> None:
         module_path="tests.platforms.test_registry_bootstrap",
         factory_name="create_fake_adapter",
     )
-    bootstrap = PlatformBootstrap(framework, registry=registry)
-    instances = await bootstrap.start_platforms(
+    manager = PlatformManager(framework, registry=registry)
+    instances = await manager.start_platforms(
         [{"type": "fake", "instance_uuid": "instance-a", "enabled": True}]
     )
 
-    await bootstrap.stop_platforms()
+    await manager.stop_platforms()
 
     adapter = cast(FakeAdapter, instances[0].adapter)
     assert adapter.stopped is True
-    assert bootstrap.list_instances() == ()
+    assert manager.list_instances() == ()

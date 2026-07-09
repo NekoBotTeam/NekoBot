@@ -574,7 +574,7 @@ class LLMHandler:
             title = sender_info.get("title")
             if name:
                 ctx_parts.append(f"用户名：{name}")
-            if uid:
+            if uid and self._get_config_bool(ctx, "inject_user_id", False):
                 ctx_parts.append(f"UID：{uid}")
             if role:
                 ctx_parts.append(f"身份：{role}")

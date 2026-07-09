@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
-from ..app import NekoBotFramework
 from ..conversations.context import ConfigurationContext
 from .registry import PlatformRegistry
+
+if TYPE_CHECKING:
+    from ..app import NekoBotFramework
 
 
 @dataclass(slots=True)
@@ -21,7 +23,7 @@ class StartablePlatform(Protocol):
     async def stop(self) -> None: ...
 
 
-class PlatformBootstrap:
+class PlatformManager:
     def __init__(
         self,
         framework: NekoBotFramework,

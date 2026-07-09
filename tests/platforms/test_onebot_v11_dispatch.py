@@ -18,7 +18,7 @@ from packages.platforms.onebot_v11.types import (
     OneBotV11OutboundTarget,
     OneBotV11Scene,
 )
-from packages.plugins.llm_chat import LLMChatPlugin
+from packages.llm.handler import LLMHandler
 from packages.providers.base import ChatProvider
 from packages.providers.types import ProviderRequest, ProviderResponse, ValueMap
 from packages.runtime.context import PluginContext
@@ -266,9 +266,8 @@ async def test_dispatch_generic_notice_handler_matches_concrete_notice_event() -
     assert recorder.payloads[0]["event_name"] == "notice.notify.poke"
 
 
-async def test_dispatch_built_in_llm_chat_plugin_replies_through_provider() -> None:
+async def test_dispatch_built_in_llm_handler_replies_through_provider() -> None:
     framework = NekoBotFramework()
-    _ = framework.binder.bind_plugin_class(LLMChatPlugin)
     framework.runtime_registry.register_provider(
         RegisteredProvider(
             provider_class=FakeChatProvider,
@@ -292,10 +291,12 @@ async def test_dispatch_built_in_llm_chat_plugin_replies_through_provider() -> N
         framework,
         send_callable=send_callable,
         message_codec=OneBotV11MessageCodec(),
+        llm_handler=LLMHandler(framework),
     )
     event = OneBotV11Event(
         event_type="message",
         event_name="message.private",
+        post_type="message",
         scene=OneBotV11Scene.PRIVATE,
         platform_instance_uuid="instance-1",
         user_id="user-1",
@@ -304,10 +305,8 @@ async def test_dispatch_built_in_llm_chat_plugin_replies_through_provider() -> N
         plain_text="hello llm",
     )
 
-    contexts = await dispatcher.dispatch_event(event, configuration)
+    await dispatcher.dispatch_event(event, configuration)
 
-    assert len(contexts) == 1
-    assert contexts[0].execution.scope == "private"
     assert len(sent) == 1
     target, segments = sent[0]
     assert target.user_id == "user-1"

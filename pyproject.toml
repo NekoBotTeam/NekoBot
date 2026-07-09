@@ -7,10 +7,14 @@ requires-python = ">=3.13"
 dependencies = [
     "aiohttp>=3.13.3",
     "anthropic>=0.86.0",
+    "bcrypt>=4.3.0",
     "celery>=5.6.2",
     "google-genai>=1.68.0",
+    "hypercorn>=0.17.3",
     "loguru>=0.7.0",
     "openai>=2.29.0",
+    "psutil>=7.0.0",
+    "pyjwt>=2.10.0",
     "quart>=0.20.0",
 ]
 
@@ -38,3 +42,17 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 asyncio_mode = "auto"
 pythonpath = ["."]
+
+[tool.basedpyright]
+# Quart 蓝图路由由装饰器注册，静态分析会误报"未使用"；web 层 JSON body 与
+# Quart API 天然返回 Any，放宽这些超严格规则以保留真实类型错误。
+reportUnusedFunction = "none"
+reportUnusedParameter = "none"
+reportUnusedCallResult = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownParameterType = "none"
+reportAny = "none"
+reportExplicitAny = "none"
+reportUnannotatedClassAttribute = "none"

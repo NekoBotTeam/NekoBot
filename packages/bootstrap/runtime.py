@@ -8,7 +8,7 @@ from ..app import NekoBotFramework, create_framework
 from ..conversations.context import ConfigurationContext
 from ..permissions import PermissionEngine
 from ..permissions.models import PermissionRule
-from ..platforms.bootstrap import PlatformBootstrap, RunningPlatformInstance
+from ..platforms.manager import PlatformManager, RunningPlatformInstance
 from ..platforms.registry import PlatformRegistry
 from ..providers.sources import (
     ANTHROPIC_PROVIDER_SCHEMA,
@@ -27,12 +27,13 @@ from .config import BootstrapConfig, normalize_app_config
 class BootstrappedRuntime:
     framework: NekoBotFramework
     configuration: ConfigurationContext
-    platform_bootstrap: PlatformBootstrap
+    platform_manager: PlatformManager
     running_platforms: tuple[RunningPlatformInstance, ...]
+    app_config: BootstrapConfig
 
     async def stop(self) -> None:
         logger.info("Stopping {} platform instance(s)...", len(self.running_platforms))
-        await self.platform_bootstrap.stop_platforms()
+        await self.platform_manager.stop_platforms()
         logger.info("Platform shutdown complete")
 
 
@@ -147,8 +148,9 @@ async def bootstrap_runtime(
         "Bootstrapping framework with {} configured platform instance(s)",
         len(normalized.platforms),
     )
-    platform_bootstrap = PlatformBootstrap(framework, registry=registry)
-    running_platforms = await platform_bootstrap.start_platforms(
+    if registry is not None:
+        framework.platform_manager = PlatformManager(framework, registry=registry)
+    running_platforms = await framework.platform_manager.start_platforms(
         normalized.platforms,
         configuration=configuration,
     )
@@ -162,6 +164,7 @@ async def bootstrap_runtime(
     return BootstrappedRuntime(
         framework=framework,
         configuration=configuration,
-        platform_bootstrap=platform_bootstrap,
+        platform_manager=framework.platform_manager,
         running_platforms=running_platforms,
+        app_config=normalized,
     )

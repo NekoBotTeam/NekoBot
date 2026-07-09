@@ -15,6 +15,7 @@ from .moderation import ModerationService
 from .moderation.types import ModerationDecision, ModerationRequest, ModerationStage
 from .permissions import PermissionDecision, PermissionEngine
 from .permissions.constants import PermissionName, ScopeName
+from .platforms.manager import PlatformManager
 from .providers import (
     ChatProvider,
     EmbeddingProvider,
@@ -60,6 +61,7 @@ class NekoBotFramework:
         # 权限引擎和 owner ID 集合，由 bootstrap 注入
         self.permission_engine: PermissionEngine | None = None
         self.owner_ids: frozenset[str] = frozenset()
+        self.platform_manager: PlatformManager = PlatformManager(self)
 
     def register_schema(self, name: str, schema: ObjectSchema) -> None:
         self.runtime_registry.register_schema(name, schema)

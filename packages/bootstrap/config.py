@@ -20,6 +20,7 @@ class BootstrapConfig:
     conversation_config: ValueMap = field(default_factory=dict)
     plugin_bindings: ScopedValueMap = field(default_factory=dict)
     platforms: list[ValueMap] = field(default_factory=list)
+    auth_config: ValueMap = field(default_factory=dict)
 
 
 DEFAULT_CONFIG_PATH = Path("data/config.json")
@@ -45,6 +46,7 @@ def normalize_app_config(raw: dict[object, object]) -> BootstrapConfig:
         conversation_config=_value_map(raw.get("conversation_config")),
         plugin_bindings=_scoped_value_map(raw.get("plugin_bindings")),
         platforms=_platform_list(raw.get("platforms")),
+        auth_config=_value_map(raw.get("auth_config")),
     )
 
 
